@@ -113,4 +113,19 @@ class CameraController {
 
     return supportedLens;
   }
+
+  Future<CameraDevice> frontCamera() => deviceWithPosition(
+        CameraDevicePosition.front,
+        CameraDeviceType.wideAngle,
+      );
+
+  Future<CameraDevice> backCamera({
+    CameraDeviceType type = CameraDeviceType.wideAngle,
+  }) =>
+      deviceWithPosition(
+        CameraDevicePosition.back,
+        type,
+      );
+
+  // todo: CameraDeviceTypeExtenden
 }

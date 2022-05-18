@@ -30,3 +30,15 @@ enum CameraDevicePosition {
   back,
   front,
 }
+
+enum CameraDeviceTypeExtenden {
+  externalUnknown,
+  wideAngle,
+  telephoto,
+  ultraWide,
+  dual,
+  dualWide,
+  triple,
+  trueDepth,
+  lLiDARDepth,
+}
