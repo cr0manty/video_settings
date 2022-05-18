@@ -1,0 +1,241 @@
+//
+//  FocusController.m
+//  video_settings
+//
+//  Created by Denys Dudka on 18.05.2022.
+//
+
+#import "FocusController.h"
+#import "FlutterDataHandler.h"
+#import "VideoSettingsPlugin.h"
+
+#if TARGET_OS_IPHONE
+#import <Flutter/Flutter.h>
+#elif TARGET_OS_MAC
+#import <FlutterMacOS/FlutterMacOS.h>
+#endif
+
+
+@implementation FocusController
+
+
+-(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar {
+    if (self.focusModeHandler && self.focusLensPositionHandler) return;
+    
+    self.focusModeHandler = [[FlutterSinkDataHandler alloc]init];
+    self.focusLensPositionHandler = [[FlutterSinkDataHandler alloc]init];
+    
+    FlutterEventChannel* focusModeDataChannel = [FlutterEventChannel
+                                        eventChannelWithName:@"FocusController/modeChannel"
+                                        binaryMessenger: [registrar messenger]];
+    FlutterEventChannel* focusLensPositionChannel = [FlutterEventChannel
+                                                     eventChannelWithName:@"FocusController/lensDistanceChannel"
+                                                     binaryMessenger: [registrar messenger]];
+    
+    [focusModeDataChannel setStreamHandler:self.focusModeHandler];
+    [focusLensPositionChannel setStreamHandler:self.focusLensPositionHandler];
+}
+
+-(void)init:(NSString*)deviceId {
+    [self removeObservers];
+    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    [self addObservers];
+}
+
+-(void)addObservers {
+    [self.device addObserver:self forKeyPath:@"focusMode" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld context:nil];
+    [self.device addObserver:self forKeyPath:@"lensPosition" options:NSKeyValueObservingOptionNew context:nil];
+}
+
+-(void)removeObservers{
+    [self.device removeObserver:self forKeyPath:@"focusMode" context:nil];
+    [self.device removeObserver:self forKeyPath:@"lensPosition" context:nil];
+}
+
+-(BOOL)isFocusModeSupported:(NSInteger)modeNum {
+    AVCaptureFocusMode mode = (AVCaptureFocusMode)modeNum;
+    
+    return [self.device isFocusModeSupported:mode];
+}
+
+-(BOOL)isLockingFocusWithCustomLensPositionSupported {
+    if (@available(iOS 10.0, *)) {
+        return [self.device isLockingFocusWithCustomLensPositionSupported];
+    }
+    
+    return FALSE;
+}
+
+-(NSArray*)getSupportedFocusMode{
+    NSMutableArray *array = [[NSMutableArray alloc] init];
+    
+    if ([self.device isFocusModeSupported:AVCaptureFocusModeLocked]) {
+        [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeLocked]];
+    }
+    
+    if ([self.device isFocusModeSupported:AVCaptureFocusModeAutoFocus]) {
+        [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeAutoFocus]];
+    }
+    
+    if ([self.device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
+        [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeContinuousAutoFocus]];
+    }
+    
+    return array;
+}
+
+-(AVCaptureFocusMode)getFocusMode {
+    return [self.device focusMode];
+}
+
+-(void)setFocusMode:(NSInteger)modeNum result:(FlutterResult)result {
+    AVCaptureFocusMode mode = (AVCaptureFocusMode)modeNum;
+    
+    if (![self.device isFocusModeSupported:mode]) {
+        result(@NO);
+    }
+    
+    NSError *error;
+    if ([self.device lockForConfiguration:&error]) {
+        [self.device setFocusMode:mode];
+        [self.device unlockForConfiguration];
+        result(@YES);
+    }
+    
+    if (error) {
+        result([FlutterError errorWithCode:@"Set focus mode excetion"
+                            message:[NSString stringWithFormat:@"%@", error]
+                            details:nil]);
+    }
+    
+    result(@NO);
+}
+
+-(BOOL)isFocusPointOfInterestSupported {
+    return self.device.isFocusPointOfInterestSupported;
+}
+
+-(void)setFocusPoint:(CGPoint)point result:(FlutterResult)result {
+    if (!self.device.isFocusPointOfInterestSupported || !self.device.isExposurePointOfInterestSupported) {
+        result([FlutterError errorWithCode:@"Set focus point failed"
+                            message:@"Device does not have focus point capabilities"
+                            details:nil]);
+    }
+    
+    NSError *error = nil;
+    
+    UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
+    if ([self.device lockForConfiguration:&error]) {
+        CGPoint truePoint = [self getCGPointForCoordsWithOrientation:orientation
+                                                                   x:point.x
+                                                                   y:point.y];
+        [self.device setFocusPointOfInterest:truePoint];
+        [self.device setExposurePointOfInterest:truePoint];
+        [self.device unlockForConfiguration];
+        
+        [self applyExposureMode];
+        result(@YES);
+    }
+    
+    if (error) {
+        result([FlutterError errorWithCode:@"Set focus point excetion"
+                            message:[NSString stringWithFormat:@"%@", error]
+                            details:nil]);
+    }
+    
+    result(@NO);
+}
+
+-(void)applyExposureMode {
+    [self.device lockForConfiguration:nil];
+
+    AVCaptureExposureMode mode = self.device.exposureMode;
+    
+    switch (mode) {
+        case AVCaptureExposureModeLocked:
+        case AVCaptureExposureModeCustom:
+          [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
+          break;
+        case AVCaptureExposureModeAutoExpose:
+        case AVCaptureExposureModeContinuousAutoExposure:
+          if ([self.device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+            [self.device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+          } else {
+            [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
+          }
+          break;
+    }
+    
+    [self.device unlockForConfiguration];
+}
+
+-(CGPoint)getCGPointForCoordsWithOrientation:(UIDeviceOrientation)orientation
+                                            x:(double)x
+                                            y:(double)y {
+    double oldX = x;
+    double oldY = y;
+    
+    switch (orientation) {
+    case UIDeviceOrientationPortrait:  // 90 ccw
+      y = 1 - oldX;
+      x = oldY;
+      break;
+    case UIDeviceOrientationPortraitUpsideDown:  // 90 cw
+      x = 1 - oldY;
+      y = oldX;
+      break;
+    case UIDeviceOrientationLandscapeRight:  // 180
+      x = 1 - x;
+      y = 1 - y;
+      break;
+    case UIDeviceOrientationLandscapeLeft:
+    default:
+      // No rotation required
+      break;
+    }
+    return CGPointMake(x, y);
+}
+
+-(float)getFocusPointLocked {
+    return [self.device lensPosition];
+}
+
+-(void)setFocusPointLocked:(float)lensPosition result:(FlutterResult)result {
+    NSError *error;
+    if ([self.device lockForConfiguration:&error]) {
+        [self.device setFocusModeLockedWithLensPosition:lensPosition completionHandler: nil];
+        [self.device unlockForConfiguration];
+        result(@YES);
+    }
+    
+    if (error) {
+        result([FlutterError errorWithCode:@"Set focus point locked excetion"
+                            message:[NSString stringWithFormat:@"%@", error]
+                            details:nil]);
+    }
+    
+    result(@NO);
+}
+
+-(void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
+    id oldValue = [change valueForKey:NSKeyValueChangeOldKey];
+    id newValue = [change valueForKey:NSKeyValueChangeNewKey];
+
+    if (oldValue == newValue) return;
+    
+    if ([keyPath isEqual:@"focusMode"]) {
+        if (self.focusModeHandler && self.focusModeHandler.sink) {
+            self.focusModeHandler.sink(newValue);
+        }
+    } else if ([keyPath isEqual:@"lensPosition"]) {
+        if (self.focusLensPositionHandler && self.focusLensPositionHandler.sink) {
+            self.focusLensPositionHandler.sink(newValue);
+        }
+    } else {
+        NSLog(@"changedDevice");
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
+
+
+@end
