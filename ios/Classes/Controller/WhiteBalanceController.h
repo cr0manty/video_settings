@@ -8,7 +8,7 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 
-#import "FlutterDataHandler.h"
+#import "FlutterSinkHandler.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -17,10 +17,13 @@ typedef void (^FlutterResult)(id _Nullable result);
 
 @interface WhiteBalanceController : NSObject
 @property (nonatomic, strong) AVCaptureDevice *device;
-@property (nonatomic, strong) FlutterSinkDataHandler* whiteBalanceModeHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* whiteBalanceGainsHandler;
+@property (nonatomic, strong) FlutterSinkHandler* whiteBalanceModeHandler;
+@property (nonatomic, strong) FlutterSinkHandler* whiteBalanceGainsHandler;
 
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar;
+
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result;
 
 -(void)init:(NSString*)deviceId;
 

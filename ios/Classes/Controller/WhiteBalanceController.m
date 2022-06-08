@@ -17,13 +17,85 @@
 
 @implementation WhiteBalanceController
 
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result {
+    if ([@"WhiteBalanceController/init" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* deviceId = (NSString*)argsMap[@"deviceId"];
+        
+        [self init: deviceId];
+        result(@YES);
+    } else if ([@"ExposureController/dispose" isEqualToString:call.method]) {
+        [self removeObservers];
+        result(@YES);
+    } else if ([@"WhiteBalanceController/getWhiteBalanceMode" isEqualToString:call.method]) {
+        AVCaptureWhiteBalanceMode mode = [self getWhiteBalanceMode];
+        result(@(mode));
+    } else if ([@"WhiteBalanceController/isWhiteBalanceLockSupported" isEqualToString:call.method]) {
+        BOOL value = [self isWhiteBalanceLockSupported];
+        
+        result([NSNumber numberWithBool:value]);
+    } else if ([@"WhiteBalanceController/isWhiteBalanceModeSupported" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        BOOL helpResult = [self isWhiteBalanceModeSupported:[mode intValue]];
+        result([NSNumber numberWithBool:helpResult]);
+    } else if ([@"WhiteBalanceController/getSupportedWhiteBalanceMode" isEqualToString:call.method]) {
+        NSArray *value = [self getSupportedWhiteBalanceMode];
+        
+        result(value);
+    } else if ([@"WhiteBalanceController/setWhiteBalanceMode" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        [self setWhiteBalanceMode:[mode intValue] result:result];
+    } else if ([@"WhiteBalanceController/changeWhiteBalanceGains" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        AVCaptureWhiteBalanceGains gains;
+        gains.greenGain = [argsMap[@"greenGain"] floatValue];
+        gains.redGain = [argsMap[@"redGain"] floatValue];
+        gains.blueGain = [argsMap[@"blueGain"] floatValue];
+        
+        [self setWhiteBalanceGains:gains result:result];
+    } else if ([@"WhiteBalanceController/changeWhiteBalanceTemperatureAndTint" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *temperature = argsMap[@"temperature"];
+        NSNumber *tint = argsMap[@"tint"];
+        
+        [self changeWhiteBalanceTemperature:[temperature floatValue] tint:[tint floatValue] result:result];
+    } else if ([@"WhiteBalanceController/lockWithGrayWorld" isEqualToString:call.method]) {
+        [self lockWithGrayWorld:result];
+    } else if ([@"WhiteBalanceController/getMaxBalanceGains" isEqualToString:call.method]) {
+        float helpResult = [self getMaxBalanceGains];
+        result([NSNumber numberWithFloat: helpResult]);
+    } else if ([@"WhiteBalanceController/getCurrentBalanceGains" isEqualToString:call.method]) {
+        AVCaptureWhiteBalanceGains gains = [self getCurrentBalanceGains];
+        result(@{@"redGain": [NSNumber numberWithFloat: gains.redGain], @"blueGain": [NSNumber numberWithFloat: gains.blueGain], @"greenGain": [NSNumber numberWithFloat: gains.greenGain]});
+    } else if ([@"WhiteBalanceController/getCurrentTemperatureBalanceGains" isEqualToString:call.method]) {
+        AVCaptureWhiteBalanceTemperatureAndTintValues gains = [self getCurrentTemperatureBalanceGains];
+        result(@{@"tint": [NSNumber numberWithFloat: gains.tint], @"temperature": [NSNumber numberWithFloat: gains.temperature]});
+    } else if ([@"WhiteBalanceController/convertDeviceGainsToTemperature" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        AVCaptureWhiteBalanceGains deviceGains;
+        deviceGains.greenGain = [argsMap[@"greenGain"] floatValue];
+        deviceGains.redGain = [argsMap[@"redGain"] floatValue];
+        deviceGains.blueGain = [argsMap[@"blueGain"] floatValue];
+        
+        AVCaptureWhiteBalanceTemperatureAndTintValues gains = [self.device temperatureAndTintValuesForDeviceWhiteBalanceGains:deviceGains];
+        result(@{@"tint": [NSNumber numberWithFloat: gains.tint], @"temperature": [NSNumber numberWithFloat: gains.temperature]});
+    } else {
+        result(nil);
+    }
+}
+
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar {
     if (self.whiteBalanceModeHandler && self.whiteBalanceGainsHandler) {
         return;
     }
     
-    self.whiteBalanceModeHandler = [[FlutterSinkDataHandler alloc]init];
-    self.whiteBalanceGainsHandler = [[FlutterSinkDataHandler alloc]init];
+    self.whiteBalanceModeHandler = [[FlutterSinkHandler alloc]init];
+    self.whiteBalanceGainsHandler = [[FlutterSinkHandler alloc]init];
     
     FlutterEventChannel* whiteBalanceModeChannel = [FlutterEventChannel
                                                     eventChannelWithName:@"WhiteBalanceController/modeChannel"
@@ -38,7 +110,9 @@
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    if (@available(iOS 10.0, *)) {
+        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    }
     [self addObservers];
 }
 
@@ -133,7 +207,7 @@
                                 details:nil]);
         }
     }
-    return FALSE;
+    result(@NO);
 }
 
 -(void)changeWhiteBalanceTemperature:(float)temperature

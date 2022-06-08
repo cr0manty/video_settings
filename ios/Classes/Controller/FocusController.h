@@ -8,20 +8,20 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 
-#import "FlutterDataHandler.h"
+#import "FlutterSinkHandler.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
-@protocol FlutterPluginRegistrar;
-typedef void (^FlutterResult)(id _Nullable result);
 
 
 @interface FocusController : NSObject
 @property (nonatomic, strong) AVCaptureDevice *device;
-@property (nonatomic, strong) FlutterSinkDataHandler* focusModeHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* focusLensPositionHandler;
+@property (nonatomic, strong) FlutterSinkHandler* focusModeHandler;
+@property (nonatomic, strong) FlutterSinkHandler* focusLensPositionHandler;
 
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar;
+
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result;
 
 -(void)init:(NSString*)deviceId;
 

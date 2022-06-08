@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:video_settings/src/enum/ios_enums.dart';
 import 'package:video_settings/src/error/camera_control_errors.dart';
 import 'package:video_settings/src/model/camera_device.dart';
@@ -7,7 +9,7 @@ class CameraController {
   final _methodChannel = VideoSettingsMethodChannel();
 
   Future<CameraDevice> defaultDevice() async {
-    final data = await _methodChannel.invokeMethod<Map<String, dynamic>>(
+    final data = await _methodChannel.invokeMethod<Map>(
       'CameraController/defaultDevice',
     );
 
@@ -24,7 +26,7 @@ class CameraController {
     CameraDevicePosition position,
     CameraDeviceType type,
   ) async {
-    final data = await _methodChannel.invokeMethod<Map<String, dynamic>>(
+    final data = await _methodChannel.invokeMethod<Map>(
       'CameraController/deviceWithPosition',
       {
         'position': position.index,
@@ -42,8 +44,8 @@ class CameraController {
   }
 
   Future<List<CameraDevice>> enumerateDevices() async {
-    final data = await _methodChannel.invokeMethod<List<Map<String, dynamic>>>(
-      'CameraController/deviceWithPosition',
+    final data = await _methodChannel.invokeMethod<List<Map>>(
+      'CameraController/enumerateDevices',
     );
 
     if (data == null) {
@@ -60,8 +62,8 @@ class CameraController {
   }
 
   Future<CameraDevice> deviceWithUniqueId(String id) async {
-    final data = await _methodChannel.invokeMethod<Map<String, dynamic>>(
-      'CameraController/defaultDevice',
+    final data = await _methodChannel.invokeMethod<Map>(
+      'CameraController/deviceWithUniqueId',
       {
         'id': id,
       },
@@ -77,8 +79,8 @@ class CameraController {
   }
 
   Future<CameraDevice> getCameraByType(CameraDeviceType type) async {
-    final data = await _methodChannel.invokeMethod<Map<String, dynamic>>(
-      'CameraController/setCameraByName',
+    final data = await _methodChannel.invokeMethod<Map>(
+      'CameraController/getCameraByType',
       {
         'nativeName': type.nativeName,
       },
@@ -127,5 +129,20 @@ class CameraController {
         type,
       );
 
-  // todo: CameraDeviceTypeExtenden
+  Future<CameraDevice> getExtendedCameraDevice(
+    CameraDeviceTypeExtenden type,
+  ) async {
+    final data = await _methodChannel.invokeMethod<Map>(
+        'CameraController/getExtendedCameraDevice', {
+      'nativeName': type.nativeName,
+    });
+
+    if (data == null) {
+      throw NotFoundCameraDevice();
+    }
+
+    final device = CameraDevice.fromJson(data);
+
+    return device;
+  }
 }

@@ -127,7 +127,7 @@ class WhiteBalanceController extends BaseVideoSettingsController {
     }
 
     final result = await invokeMethod<bool>(
-      'WhiteBalanceController/setWhiteBalanceGains',
+      'WhiteBalanceController/changeWhiteBalanceGains',
       gains.toJson(),
     );
     return result ?? false;

@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:video_settings/src/controller/base/base_controller.dart';
 
 class ZoomController extends BaseVideoSettingsController {
-  Future<bool> setZoom(double zoom, String trackId) async {
+  Future<bool> setZoom(
+    double zoom, {
+    String? trackId,
+  }) async {
     final result = await invokeMethod<bool>(
       'ZoomController/changeZoom',
       <String, dynamic>{

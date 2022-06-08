@@ -8,6 +8,7 @@
 #import "ZoomController.h"
 #import "VideoSettingsPlugin.h"
 
+
 #if TARGET_OS_IPHONE
 #import <Flutter/Flutter.h>
 #elif TARGET_OS_MAC
@@ -16,11 +17,42 @@
 
 @implementation ZoomController
 
--(void)init:(NSString*)deviceId {
-    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+-(void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if ([@"ZoomController/init" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* deviceId = (NSString*)argsMap[@"deviceId"];
+        
+        [self init: deviceId];
+        result(@YES);
+    } else if ([@"ZoomController/changeZoom" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *zoom = argsMap[@"zoom"];
+        
+        [self setZoom:[zoom floatValue] result:result];
+    } else if ([@"ZoomController/getMaxZoomFactor" isEqualToString:call.method]) {
+        float zoom = [self getMaxZoomFactor];
+        
+        result([NSNumber numberWithFloat:zoom]);
+    } else if ([@"ZoomController/getMinZoomFactor" isEqualToString:call.method]) {
+        float zoom = [self getMinZoomFactor];
+        
+        result([NSNumber numberWithFloat:zoom]);
+    } else if ([@"ZoomController/getZoomFactor" isEqualToString:call.method]) {
+        float zoom = [self getZoomFactor];
+        
+        result([NSNumber numberWithFloat:zoom]);
+    } else {
+        result(nil);
+    }
 }
 
--(void)setZoom:(NSInteger)zoom
+-(void)init:(NSString*)deviceId {
+    if (@available(iOS 10.0, *)) {
+        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    }
+}
+
+-(void)setZoom:(float)zoom
         result:(FlutterResult) result {
     NSError *error;
     

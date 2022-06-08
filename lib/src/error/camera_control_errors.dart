@@ -14,7 +14,12 @@ class NotFoundCameraDevice implements Exception {
 }
 
 class ControllerNotInitialized implements Exception {
+  final String methdod;
+
+  const ControllerNotInitialized(this.methdod);
+
   @override
-  String toString() => 'Controller not initialized, '
+  String toString() => 'Callign method "$methdod" is not allowed,'
+      'Controller not initialized, '
       'you have to call [init] first';
 }

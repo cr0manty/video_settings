@@ -11,7 +11,7 @@ abstract class BaseVideoSettingsController {
     Map<String, dynamic>? arguments,
   ]) {
     if (!_isInitialized) {
-      throw ControllerNotInitialized();
+      throw ControllerNotInitialized(method);
     }
 
     if (runtimeType is CameraController) {
@@ -30,20 +30,25 @@ abstract class BaseVideoSettingsController {
   Future<bool> updateDeviceId(String id) => init(id);
 
   Future<bool> init(String deviceId) async {
-    _isInitialized = await invokeMethod<bool>('$runtimeType/initialize', {
-          'deviceId': deviceId,
-        }) ??
+    print('[controller_init] $runtimeType/init called');
+
+    _isInitialized = await _methodChannel.invokeMethod<bool>(
+          '$runtimeType/init',
+          {
+            'deviceId': deviceId,
+          },
+        ) ??
         false;
+    print('[controller_init] $runtimeType/init done');
 
     return _isInitialized;
   }
 
-  Future<bool> dispose() async {
+  Future<void> dispose() async {
     _isInitialized = false;
-    final result = await invokeMethod<bool>(
+
+    await _methodChannel.invokeMethod<bool>(
       '$runtimeType/dispose',
     );
-
-    return result ?? false;
   }
 }

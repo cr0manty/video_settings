@@ -6,13 +6,13 @@
 //
 
 
-#import "FlutterDataHandler.h"
+#import "FlutterSinkHandler.h"
 
-@interface FlutterSinkDataHandler()
+@interface FlutterSinkHandler()
 
 @end
 
-@implementation FlutterSinkDataHandler
+@implementation FlutterSinkHandler
 
 - (FlutterError * _Nullable)onCancelWithArguments:(id _Nullable)arguments {
     self.sink = nil;

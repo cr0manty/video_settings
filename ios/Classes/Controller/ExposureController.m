@@ -18,20 +18,109 @@
 @implementation ExposureController
 
 
-__const float kExposureDurationPower = 5.0;
-__const float kExposureMinimumDuration = 1.0/1000;
+__const float exposureDurationPower = 5.0;
+__const float exposureMinimumDuration = 1.0/1000;
 
+
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result {
+    if ([@"ExposureController/init" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* deviceId = (NSString*)argsMap[@"deviceId"];
+        
+        [self init: deviceId];
+        result(@YES);
+    } else if ([@"ExposureController/dispose" isEqualToString:call.method]) {
+        [self removeObservers];
+        result(@YES);
+    } else if ([@"ExposureController/isExposureModeSupported" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        BOOL helpResult = [self isExposureModeSupported:[mode intValue]];
+        result([NSNumber numberWithBool:helpResult]);
+    } else if ([@"ExposureController/setExposureMode" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        [self setExposureMode:[mode intValue] result:result];
+    } else if ([@"ExposureController/minExposureDuration" isEqualToString:call.method]) {
+        CMTime value = [self minExposureDuration];
+        float seconds = CMTimeGetSeconds(value);
+        
+        result(@{@"value": [NSNumber numberWithInteger:value.value], @"timescale": [NSNumber numberWithInteger:value.timescale], @"seconds": [NSNumber numberWithFloat:seconds]});
+    } else if ([@"ExposureController/maxExposureDuration" isEqualToString:call.method]) {
+        CMTime value = [self minExposureDuration];
+        float seconds = CMTimeGetSeconds(value);
+        
+        result(@{@"value": [NSNumber numberWithInteger:value.value], @"timescale": [NSNumber numberWithInteger:value.timescale], @"seconds": [NSNumber numberWithFloat:seconds]});
+    } else if ([@"ExposureController/getExposureMode" isEqualToString:call.method]) {
+        AVCaptureExposureMode value = [self getExposureMode];
+        result(@(value));
+    } else if ([@"ExposureController/changeISO" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *value = argsMap[@"value"];
+        
+        [self changeISO:[value floatValue] result:result];
+    } else if ([@"ExposureController/getISO" isEqualToString:call.method]) {
+        float value = [self getISO];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getExposureTargetBias" isEqualToString:call.method]) {
+        float value = [self getExposureTargetBias];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getMaxExposureTargetBias" isEqualToString:call.method]) {
+        float value = [self getMaxExposureTargetBias];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getMinExposureTargetBias" isEqualToString:call.method]) {
+        float value = [self getMinExposureTargetBias];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getMaxISO" isEqualToString:call.method]) {
+        float value = [self getMaxISO];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getExposureTargetOffset" isEqualToString:call.method]) {
+        float value = [self getExposureTargetOffset];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getMinISO" isEqualToString:call.method]) {
+        float value = [self getMinISO];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"ExposureController/getExposureDuration" isEqualToString:call.method]) {
+        CMTime value = [self getExposureDuration];
+        float seconds = CMTimeGetSeconds(value);
+        
+        result(@{@"value": [NSNumber numberWithInteger:value.value], @"timescale": [NSNumber numberWithInteger:value.timescale], @"seconds": [NSNumber numberWithFloat:seconds]});
+    } else if ([@"ExposureController/getExposureDurationSeconds" isEqualToString:call.method]) {
+        NSDictionary *value = [self getExposureDurationSeconds];
+        
+        result(value);
+    } else if ([@"ExposureController/changeBias" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *vlue = argsMap[@"value"];
+        
+        [self changeBias:[vlue floatValue] result:result];
+    } else if ([@"ExposureController/changeExposureDuration" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *value = argsMap[@"value"];
+        
+        [self changeExposureDuration:[value floatValue] result:result];
+    } else if ([@"ExposureController/getSupportedExposureMode" isEqualToString:call.method]) {
+        NSArray *value = [self getSupportedExposureMode];
+        
+        result(value);
+    } else {
+        result(nil);
+    }
+}
 
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar {
     if (self.exposureModeHandler && self.exposureDurationHandler &&
         self.ISOHandler && self.exposureTargetBiasHandler &&
         self.exposureTargetOffsetHandler) return;
     
-    self.exposureModeHandler = [[FlutterSinkDataHandler alloc]init];
-    self.exposureDurationHandler = [[FlutterSinkDataHandler alloc]init];
-    self.ISOHandler = [[FlutterSinkDataHandler alloc]init];
-    self.exposureTargetBiasHandler = [[FlutterSinkDataHandler alloc]init];
-    self.exposureTargetOffsetHandler = [[FlutterSinkDataHandler alloc]init];
+    self.exposureModeHandler = [[FlutterSinkHandler alloc]init];
+    self.exposureDurationHandler = [[FlutterSinkHandler alloc]init];
+    self.ISOHandler = [[FlutterSinkHandler alloc]init];
+    self.exposureTargetBiasHandler = [[FlutterSinkHandler alloc]init];
+    self.exposureTargetOffsetHandler = [[FlutterSinkHandler alloc]init];
     
     FlutterEventChannel* exposureModeChannel = [FlutterEventChannel
                                                      eventChannelWithName:@"ExposureController/modeChannel"
@@ -58,7 +147,9 @@ __const float kExposureMinimumDuration = 1.0/1000;
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    if (@available(iOS 10.0, *)) {
+        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    }
     [self addObservers];
 }
 
@@ -202,8 +293,8 @@ __const float kExposureMinimumDuration = 1.0/1000;
     
     if([self.device lockForConfiguration:&error]) {
         float iso = [self normalizeISO: self.device.ISO];
-        float p = pow(value, kExposureDurationPower); // Apply power function to expand slider's low-end range
-        float minDurationSeconds = MAX(CMTimeGetSeconds(self.device.activeFormat.minExposureDuration), kExposureMinimumDuration);
+        float p = pow(value, exposureDurationPower); // Apply power function to expand slider's low-end range
+        float minDurationSeconds = MAX(CMTimeGetSeconds(self.device.activeFormat.minExposureDuration), exposureMinimumDuration);
         float maxDurationSeconds = CMTimeGetSeconds(self.device.activeFormat.maxExposureDuration);
         float newDurationSeconds = p * ( maxDurationSeconds - minDurationSeconds ) + minDurationSeconds;
         
@@ -277,11 +368,11 @@ __const float kExposureMinimumDuration = 1.0/1000;
     CMTime max = [self.device activeFormat].maxExposureDuration;
     
     NSUInteger exposureDurationSeconds = CMTimeGetSeconds(duration);
-    NSUInteger minExposureDurationSeconds = MAX(CMTimeGetSeconds(min), kExposureMinimumDuration);
+    NSUInteger minExposureDurationSeconds = MAX(CMTimeGetSeconds(min), exposureMinimumDuration);
     NSUInteger maxExposureDurationSeconds = CMTimeGetSeconds(max);
     // Map from duration to non-linear UI range 0-1
     float p = (exposureDurationSeconds - minExposureDurationSeconds) / (maxExposureDurationSeconds - minExposureDurationSeconds); // Scale to 0-1
-    float value = pow(p, 1 / kExposureDurationPower);
+    float value = pow(p, 1 / exposureDurationPower);
 
     return @{@"duration": [NSNumber numberWithFloat:value],@"value": [NSNumber numberWithInteger:duration.value], @"timescale": [NSNumber numberWithInteger:duration.timescale], @"seconds": [NSNumber numberWithFloat:exposureDurationSeconds]};
 }

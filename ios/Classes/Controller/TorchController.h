@@ -1,8 +1,8 @@
 //
-//  ZoomController.h
-//  video_settings
+//  CameraHelper.h
+//  Pods-Runner
 //
-//  Created by Denys Dudka on 18.05.2022.
+//  Created by Denys Dudka on 19.05.2022.
 //
 
 #import <Foundation/Foundation.h>
@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef void (^FlutterResult)(id _Nullable result);
 @class FlutterMethodCall;
 
-@interface ZoomController : NSObject
+@interface TorchController : NSObject
 @property (nonatomic, strong) AVCaptureDevice *device;
 
 -(void)handleMethodCall:(FlutterMethodCall*)call
@@ -21,15 +21,16 @@ typedef void (^FlutterResult)(id _Nullable result);
 
 -(void)init:(NSString*)deviceId;
 
--(void)setZoom:(float)zoom
-        result:(FlutterResult)result;
+-(bool)isTorchSupported;
 
--(float)getMaxZoomFactor;
+-(void)switchTorch:(NSNumber*)modeNum
+            result:(FlutterResult)result;
 
--(float)getMinZoomFactor;
+-(BOOL)isTorchEnabled;
 
--(float)getZoomFactor;
+-(BOOL)isTorchModeSupported:(NSNumber*)modeNum;
 
+-(AVCaptureTorchMode)torchMode;
 
 @end
 

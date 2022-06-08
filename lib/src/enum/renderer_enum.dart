@@ -1,0 +1,4 @@
+enum VideoViewFit {
+  contain,
+  cover,
+}

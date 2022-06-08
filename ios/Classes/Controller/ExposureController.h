@@ -8,25 +8,26 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 
-#import "FlutterDataHandler.h"
+#import "FlutterSinkHandler.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 
 @protocol FlutterPluginRegistrar;
 
-typedef void (^FlutterResult)(id _Nullable result);
-
 
 @interface ExposureController: NSObject
 @property (nonatomic, strong) AVCaptureDevice *device;
-@property (nonatomic, strong) FlutterSinkDataHandler* exposureModeHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* exposureDurationHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* ISOHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* exposureTargetBiasHandler;
-@property (nonatomic, strong) FlutterSinkDataHandler* exposureTargetOffsetHandler;
+@property (nonatomic, strong) FlutterSinkHandler* exposureModeHandler;
+@property (nonatomic, strong) FlutterSinkHandler* exposureDurationHandler;
+@property (nonatomic, strong) FlutterSinkHandler* ISOHandler;
+@property (nonatomic, strong) FlutterSinkHandler* exposureTargetBiasHandler;
+@property (nonatomic, strong) FlutterSinkHandler* exposureTargetOffsetHandler;
 
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar;
+
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result;
 
 -(void)init:(NSString*)deviceId;
 

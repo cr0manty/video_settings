@@ -16,7 +16,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface FlutterSinkDataHandler : NSObject<FlutterStreamHandler>
+@interface FlutterSinkHandler : NSObject<FlutterStreamHandler>
 @property (nonatomic, copy) FlutterEventSink _Nullable sink;
 @end
 

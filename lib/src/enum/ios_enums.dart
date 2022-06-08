@@ -32,7 +32,6 @@ enum CameraDevicePosition {
 }
 
 enum CameraDeviceTypeExtenden {
-  externalUnknown,
   wideAngle,
   telephoto,
   ultraWide,
@@ -41,4 +40,10 @@ enum CameraDeviceTypeExtenden {
   triple,
   trueDepth,
   lLiDARDepth,
+}
+
+enum TorchMode {
+  on,
+  off,
+  auto,
 }

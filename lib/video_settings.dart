@@ -1,10 +1,22 @@
-library video_settings;
-
 export 'src/controller/camera_controller.dart';
+export 'src/controller/controller_factory.dart';
 export 'src/controller/exposure_controller.dart';
 export 'src/controller/focus_controller.dart';
-export 'src/controller/helper.dart';
+export 'src/controller/torch_controller.dart';
 export 'src/controller/white_balance_controller.dart';
 export 'src/controller/zoom_controller.dart';
-
 export 'src/enum/ios_enums.dart';
+export 'src/enum/renderer_enum.dart';
+export 'src/error/camera_control_errors.dart';
+export 'src/error/exposure_error.dart';
+export 'src/error/focus_error.dart';
+export 'src/error/stabilization_error.dart';
+export 'src/error/video_renderer_error.dart';
+export 'src/error/white_balance_error.dart';
+export 'src/model/camera_device.dart';
+export 'src/model/camera_device.dart';
+export 'src/model/exposure.dart';
+export 'src/model/white_balance/gains.dart';
+export 'src/model/white_balance/temperature_gains.dart';
+export 'src/renderer/example_video_renderer.dart';
+export 'src/widget/video_view.dart';

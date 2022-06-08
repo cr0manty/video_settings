@@ -18,12 +18,67 @@
 
 @implementation FocusController
 
+-(void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if ([@"FocusController/init" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* deviceId = (NSString*)argsMap[@"deviceId"];
+        
+        [self init: deviceId];
+        result(@YES);
+    } else if ([@"ExposureController/dispose" isEqualToString:call.method]) {
+        [self removeObservers];
+        result(@YES);
+    } else if ([@"FocusController/getFocusMode" isEqualToString:call.method]) {
+        AVCaptureFocusMode value = [self getFocusMode];
+        result(@(value));
+    } else if ([@"FocusController/isFocusModeSupported" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        BOOL helpResult = [self isFocusModeSupported:[mode intValue]];
+        result([NSNumber numberWithBool:helpResult]);
+    } else if ([@"FocusController/isFocusPointOfInterestSupported" isEqualToString:call.method]) {
+        BOOL value = [self isFocusPointOfInterestSupported];
+        
+        result([NSNumber numberWithBool:value]);
+    } else if ([@"FocusController/isLockingFocusWithCustomLensPositionSupported" isEqualToString:call.method]) {
+        BOOL value = [self isLockingFocusWithCustomLensPositionSupported];
+        
+        result([NSNumber numberWithBool:value]);
+    } else if ([@"FocusController/setFocusMode" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *mode = argsMap[@"mode"];
+        
+        [self setFocusMode:[mode intValue] result:result];
+    } else if ([@"FocusController/setFocusPoint" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        CGPoint point;
+        point.x = [argsMap[@"x"] floatValue];
+        point.y = [argsMap[@"y"] floatValue];
+        
+        [self setFocusPoint:point result:result];
+    } else if ([@"FocusController/getFocusPointLockedWithLensPosition" isEqualToString:call.method]) {
+        float value = [self getFocusPointLocked];
+        result([NSNumber numberWithFloat:value]);
+    } else if ([@"FocusController/setFocusPointLockedWithLensPosition" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *position = argsMap[@"position"];
+        
+        [self setFocusPointLocked:[position floatValue] result:result];
+    } else if ([@"FocusController/getSupportedFocusMode" isEqualToString:call.method]) {
+        NSArray *value = [self getSupportedFocusMode];
+        
+        result(value);
+    } else {
+        result(nil);
+    }
+}
 
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar {
     if (self.focusModeHandler && self.focusLensPositionHandler) return;
     
-    self.focusModeHandler = [[FlutterSinkDataHandler alloc]init];
-    self.focusLensPositionHandler = [[FlutterSinkDataHandler alloc]init];
+    self.focusModeHandler = [[FlutterSinkHandler alloc]init];
+    self.focusLensPositionHandler = [[FlutterSinkHandler alloc]init];
     
     FlutterEventChannel* focusModeDataChannel = [FlutterEventChannel
                                         eventChannelWithName:@"FocusController/modeChannel"
@@ -38,7 +93,9 @@
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    if (@available(iOS 10.0, *)) {
+        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    }
     [self addObservers];
 }
 
@@ -66,7 +123,7 @@
     return FALSE;
 }
 
--(NSArray*)getSupportedFocusMode{
+-(NSArray*)getSupportedFocusMode {
     NSMutableArray *array = [[NSMutableArray alloc] init];
     
     if ([self.device isFocusModeSupported:AVCaptureFocusModeLocked]) {
@@ -103,7 +160,7 @@
     }
     
     if (error) {
-        result([FlutterError errorWithCode:@"Set focus mode excetion"
+        result([FlutterError errorWithCode:@"Set focus mode exception"
                             message:[NSString stringWithFormat:@"%@", error]
                             details:nil]);
     }

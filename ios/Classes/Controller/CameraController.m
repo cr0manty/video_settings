@@ -7,7 +7,157 @@
 
 #import "CameraController.h"
 
+#if TARGET_OS_IPHONE
+#import <Flutter/Flutter.h>
+#elif TARGET_OS_MAC
+#import <FlutterMacOS/FlutterMacOS.h>
+#endif
+
 @implementation CameraController
+
+-(void)handleMethodCall:(FlutterMethodCall*)call
+                 result:(FlutterResult)result {
+    if ([@"CameraController/defaultDevice" isEqualToString:call.method]) {
+        AVCaptureDevice *device = [self defaultDevice];
+        if (!device) {
+            result([FlutterError errorWithCode:@"Camera device not found"
+                                message:@""
+                                details:nil]);
+        }
+        NSDictionary *data = [self parseDevice:device];
+        result(data);
+    } else if ([@"CameraController/deviceWithPosition" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSNumber *position = argsMap[@"position"];
+        NSString *typeName = (NSString*)argsMap[@"type"];
+        
+        if (@available(iOS 10.0, *)) {
+            AVCaptureDeviceType type = [self typeByName:typeName];
+            
+            AVCaptureDevice *device = [self deviceWithPosition:(AVCaptureDevicePosition)position deviceType:type];
+            if (!device) {
+                result([FlutterError errorWithCode:@"Camera device not found"
+                                    message:@""
+                                    details:nil]);
+            }
+            NSDictionary *data = [self parseDevice:device];
+            result(data);
+        } else {
+            result(nil);
+        }
+    } else if ([@"CameraController/enumerateDevices" isEqualToString:call.method]) {
+        NSArray *array = [self enumerateDevices];
+        
+        result(array);
+    } else if ([@"CameraController/deviceWithUniqueId" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString *uniqueID = argsMap[@"id"];
+        
+        AVCaptureDevice *device = [self deviceWithUniqueID:uniqueID];
+        if (!device) {
+            result([FlutterError errorWithCode:@"Camera device not found"
+                                message:@""
+                                details:nil]);
+        }
+        NSDictionary *data = [self parseDevice:device];
+        result(data);
+    } else if ([@"CameraController/getCameraByType" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString *nativeName = argsMap[@"nativeName"];
+        
+        if (@available(iOS 10.0, *)) {
+            AVCaptureDeviceType type = [self typeByName:nativeName];
+            AVCaptureDevice *device = [self deviceWithPosition:AVCaptureDevicePositionBack deviceType:type];
+            if (!device) {
+                result([FlutterError errorWithCode:@"Camera device not found"
+                                    message:@""
+                                    details:nil]);
+            }
+            
+            NSDictionary *data = [self parseDevice:device];
+            result(data);
+        } else {
+            result(nil);
+        }
+    } else if ([@"CameraController/getCameraLensAmount" isEqualToString:call.method]) {
+        int lensAmount = [self cameraLensAmount];
+        
+        result([NSNumber numberWithInt:lensAmount]);
+    } else if ([@"CameraController/getSupportedCameraLens" isEqualToString:call.method]) {
+        NSArray *array = [self getSupportedCameraLens];
+        
+        result(array);
+    } else if ([@"CameraController/getExtendedCameraDevice" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString *nativeName = argsMap[@"nativeName"];
+        
+        if (@available(iOS 10.0, *)) {
+            AVCaptureDeviceType type = [self typeByName:nativeName];
+            
+            AVCaptureDevice *device = [self deviceWithPosition:AVCaptureDevicePositionBack deviceType:type];
+            if (!device) {
+                result([FlutterError errorWithCode:@"Camera device not found"
+                                    message:@""
+                                    details:nil]);
+            }
+            
+            NSDictionary *data = [self parseDevice:device];
+            result(data);
+        } else {
+            result(nil);
+        }
+    } else {
+        result(nil);
+    }
+}
+
+-(AVCaptureDeviceType)typeByName:(NSString*)name API_AVAILABLE(ios(10.0)) {
+    if ([@"WideAngleCamera" isEqualToString:name]) {
+        return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+    } else if ([@"TelephotoCamera" isEqualToString:name]) {
+        return AVCaptureDeviceTypeBuiltInTelephotoCamera;
+    } else if ([@"UltraWideCamera" isEqualToString:name]) {
+        if (@available(iOS 13.0, *)) {
+            return AVCaptureDeviceTypeBuiltInUltraWideCamera;
+        }
+    } else if ([@"InDualCamera" isEqualToString:name]) {
+        if (@available(iOS 10.2, *)) {
+            return AVCaptureDeviceTypeBuiltInDualCamera;
+        }
+    } else if ([@"DualWideCamera" isEqualToString:name]) {
+        if (@available(iOS 13.0, *)) {
+            return AVCaptureDeviceTypeBuiltInDualWideCamera;
+        }
+    } else if ([@"TripleCamera" isEqualToString:name]) {
+        if (@available(iOS 13.0, *)) {
+            return AVCaptureDeviceTypeBuiltInTripleCamera;
+        }
+    } else if ([@"TrueDepthCamera" isEqualToString:name]) {
+        if (@available(iOS 11.1, *)) {
+            return AVCaptureDeviceTypeBuiltInTrueDepthCamera;
+        }
+    } else if ([@"LiDARDepthCamera" isEqualToString:name]) {
+        if (@available(iOS 15.4, *)) {
+            return AVCaptureDeviceTypeBuiltInLiDARDepthCamera;
+        }
+    }
+    
+    return nil;
+}
+
+-(NSDictionary*)parseDevice:(AVCaptureDevice*)device {
+    NSString *type;
+    
+    if (@available(iOS 10.0, *)) {
+        type = device.deviceType;
+    }
+    
+    return @{
+        @"uniqueID": device.uniqueID,
+        @"deviceType": type,
+        @"localizedName": device.localizedName,
+    };
+}
 
 -(int)cameraLensAmount {
     if (@available(iOS 13.0, *)) {
@@ -87,18 +237,18 @@
 }
 
 -(AVCaptureDevice*)getCameraByName:(NSString*)name {
-    if ([name isEqual:@"AVCaptureDeviceTypeBuiltInWideAngleCamera"]) {
+    if ([name isEqual:@"WideAngleCamera"]) {
         if (@available(iOS 10.0, *)) {
             return [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
         }
     }
     if (@available(iOS 13.0, *)) {
-        if ([name isEqual:@"AVCaptureDeviceTypeBuiltInUltraWideCamera"]) {
+        if ([name isEqual:@"UltraWideCamera"]) {
             
             return [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
         }
     }
-    if ([name isEqual:@"AVCaptureDeviceTypeBuiltInTelephotoCamera"]) {
+    if ([name isEqual:@"TelephotoCamera"]) {
         if (@available(iOS 10.0, *)) {
             return [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInTelephotoCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
         }
@@ -123,7 +273,8 @@
     NSMutableArray *array = [[NSMutableArray alloc] init];
     
     for (AVCaptureDevice *device in [AVCaptureDevice devices]) {
-        [array addObject:device];
+        NSDictionary *data = [self parseDevice:device];
+        [array addObject:data];
     }
     return array;
 }
