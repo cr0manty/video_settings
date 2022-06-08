@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:video_settings/src/model/camera_device.dart';
 import 'package:video_settings/video_settings.dart';
 
 typedef ChandgeDevice = Future<bool> Function(String uniqueId);
 
-class ControllerFactory {
+class VideoSettingsControllerFactory {
+  final _streamController = StreamController<CameraDevice>.broadcast();
   final _onDeviceUpdateController = <ChandgeDevice>[];
 
   TorchController? _torchController;
@@ -15,17 +15,11 @@ class ControllerFactory {
   ZoomController? _zoomController;
   CameraController? _cameraController;
 
-  StreamSubscription<CameraDevice>? _cameraDeviceHasChandged;
+  Future<void> cameraDeviceChandgedListener(CameraDevice? device) async {
+    if (device == null) return;
 
-  void setDeviceChanged(Stream<CameraDevice>? deviceChanged) {
-    if (_cameraDeviceHasChandged != null) {
-      _cameraDeviceHasChandged = deviceChanged?.listen(
-        _cameraDeviceChandgedListener,
-      );
-    }
-  }
+    _streamController.add(device);
 
-  Future<void> _cameraDeviceChandgedListener(CameraDevice device) async {
     for (final updater in _onDeviceUpdateController) {
       await updater.call(device.uniqueID);
     }
@@ -54,6 +48,18 @@ class ControllerFactory {
     if (useTorch) {
       await torchController.init(deviceId);
     }
+  }
+
+  Future<void> updateDeviceId(String deviceId) async {
+    _streamController.add(
+      CameraDevice(uniqueID: deviceId),
+    );
+
+    await _torchController?.init(deviceId);
+    await _whiteBalanceController?.init(deviceId);
+    await _exposureController?.init(deviceId);
+    await _focusController?.init(deviceId);
+    await _zoomController?.init(deviceId);
   }
 
   CameraController get cameraController {
@@ -118,7 +124,7 @@ class ControllerFactory {
   }
 
   Future<void> dispose() async {
-    _cameraDeviceHasChandged?.cancel();
+    await _streamController.close();
     await _torchController?.dispose();
     await _whiteBalanceController?.dispose();
     await _exposureController?.dispose();
