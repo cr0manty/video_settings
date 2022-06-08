@@ -67,6 +67,11 @@
         
         if (@available(iOS 10.0, *)) {
             AVCaptureDeviceType type = [self typeByName:nativeName];
+            if (!type) {
+                result([FlutterError errorWithCode:@"Invalid AVCaptureDeviceType not found"
+                                    message:@""
+                                    details:nil]);
+            }
             AVCaptureDevice *device = [self deviceWithPosition:AVCaptureDevicePositionBack deviceType:type];
             if (!device) {
                 result([FlutterError errorWithCode:@"Camera device not found"

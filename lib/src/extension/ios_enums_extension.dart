@@ -6,7 +6,7 @@ extension CameraDeviceTypeEX on CameraDeviceType {
       case CameraDeviceType.telephoto:
         return 'TelephotoCamera';
       case CameraDeviceType.ultraWide:
-        return 'WideCamera';
+        return 'UltraWideCamera';
       default:
         return 'WideAngleCamera';
     }
