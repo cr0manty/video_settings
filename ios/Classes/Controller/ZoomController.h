@@ -16,8 +16,6 @@ typedef void (^FlutterResult)(id _Nullable result);
 @interface ZoomController : NSObject
 @property (nonatomic, strong) AVCaptureDevice *_Nullable device;
 
--(instancetype)init;
-
 -(void)handleMethodCall:(FlutterMethodCall*)call
                  result:(FlutterResult)result;
 

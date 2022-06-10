@@ -7,7 +7,6 @@
 
 #import "ZoomController.h"
 #import "VideoSettingsPlugin.h"
-#import "CallBackModel.h"
 
 #if TARGET_OS_IPHONE
 #import <Flutter/Flutter.h>
@@ -15,31 +14,10 @@
 #import <FlutterMacOS/FlutterMacOS.h>
 #endif
 
-@implementation ZoomController {
-    NSMutableArray *_callArray;
-}
-
--(instancetype)init {
-    self = [super init];
-    
-    if (self) {
-        _callArray = [[NSMutableArray alloc] init];
-    }
-    
-    return self;
-}
+@implementation ZoomController
 
 -(void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
-    if (!self.device && ![@"ZoomController/init" isEqualToString:call.method]) {
-        CallBackModel *model = [[CallBackModel alloc] init:call result:result];
-        [_callArray addObject:model];
-        return;
-    }
-    
-    if ([@"ZoomController/deinit" isEqualToString:call.method]) {
-        self.device = nil;
-        result(@YES);
-    } else if ([@"ZoomController/init" isEqualToString:call.method]) {
+    if ([@"ZoomController/init" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* deviceId = (NSString*)argsMap[@"deviceId"];
         
@@ -72,11 +50,7 @@
         AVCaptureDevice *newDevice = [VideoSettingsPlugin deviceByUniqueID: deviceId];
         if (newDevice) {
             self.device = newDevice;
-            NSLog(@"Array Lens %lu", (unsigned long)_callArray.count);
-            for (CallBackModel *model in _callArray) {
-                [self handleMethodCall:model.call result:model.result];
-                [_callArray removeObject:model];
-            }
+
         }
     }
 }
