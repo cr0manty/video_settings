@@ -20,6 +20,9 @@ class FocusController extends BaseVideoSettingsController{
   Stream<FocusMode>? _focusModeStream;
   Stream<double>? _focusLensDistanceStream;
 
+  @override
+  String get methodType => 'FocusController';
+
   Stream<FocusMode> get focusModeStream {
     _focusModeStream ??= _focusModeChannel.receiveBroadcastStream().transform(
       StreamTransformer.fromHandlers(

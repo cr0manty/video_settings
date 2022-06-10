@@ -78,7 +78,9 @@ class CameraController {
     return device;
   }
 
-  Future<CameraDevice> getCameraByType(CameraDeviceType type) async {
+  Future<CameraDevice> getCameraByType(
+    CameraDeviceType type,
+  ) async {
     final data = await _methodChannel.invokeMethod<Map>(
       'CameraController/getCameraByType',
       {
@@ -132,8 +134,8 @@ class CameraController {
   Future<CameraDevice> getExtendedCameraDevice(
     CameraDeviceTypeExtenden type,
   ) async {
-    final data = await _methodChannel.invokeMethod<Map>(
-        'CameraController/getExtendedCameraDevice', {
+    final data = await _methodChannel
+        .invokeMethod<Map>('CameraController/getExtendedCameraDevice', {
       'nativeName': type.nativeName,
     });
 

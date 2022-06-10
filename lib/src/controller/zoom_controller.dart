@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:video_settings/src/controller/base/base_controller.dart';
 
 class ZoomController extends BaseVideoSettingsController {
+  @override
+  String get methodType => 'ZoomController';
+
   Future<bool> setZoom(
     double zoom, {
     String? trackId,

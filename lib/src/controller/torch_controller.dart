@@ -2,6 +2,9 @@ import 'package:video_settings/src/controller/base/base_controller.dart';
 import 'package:video_settings/src/enum/ios_enums.dart';
 
 class TorchController extends BaseVideoSettingsController {
+  @override
+  String get methodType => 'TorchController';
+
   Future<bool> switchTorch(TorchMode mode) async {
     final result = await invokeMethod<bool>(
       'TorchController/switchTorch',

@@ -107,3 +107,30 @@ extension TorchModeEX on TorchMode {
     }
   }
 }
+
+extension CameraDevicePositionEX on CameraDevicePosition {
+  String get name {
+    switch (this) {
+
+      case CameraDevicePosition.unspecified:
+        return 'unspecified';
+      case CameraDevicePosition.back:
+        return 'back';
+      case CameraDevicePosition.front:
+        return 'front';
+    }
+  }
+
+  static CameraDevicePosition fromName(String name) {
+    switch(name) {
+      case 'front':
+        return CameraDevicePosition.front;
+      case 'back':
+        return CameraDevicePosition.back;
+      case 'unspecified':
+        return CameraDevicePosition.unspecified;
+    }
+
+    return CameraDevicePosition.back;
+  }
+}

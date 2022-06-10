@@ -21,8 +21,8 @@
         AVCaptureDevice *device = [self defaultDevice];
         if (!device) {
             result([FlutterError errorWithCode:@"Camera device not found"
-                                message:@""
-                                details:nil]);
+                                       message:@""
+                                       details:nil]);
         }
         NSDictionary *data = [self parseDevice:device];
         result(data);
@@ -37,8 +37,8 @@
             AVCaptureDevice *device = [self deviceWithPosition:(AVCaptureDevicePosition)position deviceType:type];
             if (!device) {
                 result([FlutterError errorWithCode:@"Camera device not found"
-                                    message:@""
-                                    details:nil]);
+                                           message:@""
+                                           details:nil]);
             }
             NSDictionary *data = [self parseDevice:device];
             result(data);
@@ -56,8 +56,8 @@
         AVCaptureDevice *device = [self deviceWithUniqueID:uniqueID];
         if (!device) {
             result([FlutterError errorWithCode:@"Camera device not found"
-                                message:@""
-                                details:nil]);
+                                       message:@""
+                                       details:nil]);
         }
         NSDictionary *data = [self parseDevice:device];
         result(data);
@@ -69,14 +69,14 @@
             AVCaptureDeviceType type = [self typeByName:nativeName];
             if (!type) {
                 result([FlutterError errorWithCode:@"Invalid AVCaptureDeviceType not found"
-                                    message:@""
-                                    details:nil]);
+                                           message:@""
+                                           details:nil]);
             }
             AVCaptureDevice *device = [self deviceWithPosition:AVCaptureDevicePositionBack deviceType:type];
             if (!device) {
                 result([FlutterError errorWithCode:@"Camera device not found"
-                                    message:@""
-                                    details:nil]);
+                                           message:@""
+                                           details:nil]);
             }
             
             NSDictionary *data = [self parseDevice:device];
@@ -102,8 +102,8 @@
             AVCaptureDevice *device = [self deviceWithPosition:AVCaptureDevicePositionBack deviceType:type];
             if (!device) {
                 result([FlutterError errorWithCode:@"Camera device not found"
-                                    message:@""
-                                    details:nil]);
+                                           message:@""
+                                           details:nil]);
             }
             
             NSDictionary *data = [self parseDevice:device];
@@ -151,7 +151,7 @@
 }
 
 -(NSDictionary*)parseDevice:(AVCaptureDevice*)device {
-    NSString *type;
+    NSString *type = @"";
     
     if (@available(iOS 10.0, *)) {
         type = device.deviceType;
@@ -161,7 +161,21 @@
         @"uniqueID": device.uniqueID,
         @"deviceType": type,
         @"localizedName": device.localizedName,
+        @"position": [self positionToString: device.position],
     };
+}
+
+-(NSString*)positionToString:(AVCaptureDevicePosition)position {
+    switch (position) {
+        case AVCaptureDevicePositionBack:
+            return @"back";
+        case AVCaptureDevicePositionFront:
+            return @"front";
+        case AVCaptureDevicePositionUnspecified:
+            return @"unspecified";
+    }
+    
+    return @"unspecified";
 }
 
 -(int)cameraLensAmount {
@@ -224,7 +238,7 @@
             [data addObject:AVCaptureDeviceTypeBuiltInWideAngleCamera];
         }
     }
-
+    
     if (@available(iOS 10.0, *)) {
         if ([AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInTelephotoCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack]) {
             [data addObject:AVCaptureDeviceTypeBuiltInTelephotoCamera];

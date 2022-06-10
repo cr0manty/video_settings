@@ -7,6 +7,7 @@ typedef ChandgeDevice = Future<bool> Function(String uniqueId);
 class VideoSettingsControllerFactory {
   final _streamController = StreamController<CameraDevice>.broadcast();
   final _onDeviceUpdateController = <ChandgeDevice>[];
+  CameraDevice? _device;
 
   TorchController? _torchController;
   WhiteBalanceController? _whiteBalanceController;
@@ -18,48 +19,67 @@ class VideoSettingsControllerFactory {
   Future<void> cameraDeviceChandgedListener(CameraDevice? device) async {
     if (device == null) return;
 
-    _streamController.add(device);
-
     for (final updater in _onDeviceUpdateController) {
       await updater.call(device.uniqueID);
     }
+
+    _device = device;
+    _streamController.add(device);
   }
 
-  Future<void> init(
-    String deviceId, {
+  CameraDevice? get device => _device;
+
+  Stream<CameraDevice> get deviceChandged => _streamController.stream;
+
+  VideoSettingsControllerFactory({
     bool useTorch = true,
     bool useZoom = true,
     bool useFocus = true,
     bool useWhiteBalance = true,
     bool useExposure = true,
-  }) async {
+  }) {
     if (useExposure) {
-      await exposureController.init(deviceId);
+      _exposureController = ExposureController();
+      _onDeviceUpdateController.add(
+        _exposureController!.updateDeviceId,
+      );
     }
     if (useZoom) {
-      await zoomController.init(deviceId);
+      _zoomController = ZoomController();
+      _onDeviceUpdateController.add(
+        _zoomController!.updateDeviceId,
+      );
     }
     if (useFocus) {
-      await focusController.init(deviceId);
+      _focusController = FocusController();
+      _onDeviceUpdateController.add(
+        _focusController!.updateDeviceId,
+      );
     }
     if (useWhiteBalance) {
-      await whiteBalanceController.init(deviceId);
+      _whiteBalanceController = WhiteBalanceController();
+      _onDeviceUpdateController.add(
+        _whiteBalanceController!.updateDeviceId,
+      );
     }
     if (useTorch) {
-      await torchController.init(deviceId);
+      _torchController = TorchController();
+      _onDeviceUpdateController.add(
+        _torchController!.updateDeviceId,
+      );
     }
   }
 
   Future<void> updateDeviceId(String deviceId) async {
-    _streamController.add(
-      CameraDevice(uniqueID: deviceId),
-    );
-
     await _torchController?.init(deviceId);
     await _whiteBalanceController?.init(deviceId);
     await _exposureController?.init(deviceId);
     await _focusController?.init(deviceId);
     await _zoomController?.init(deviceId);
+
+    _streamController.add(
+      CameraDevice(uniqueID: deviceId),
+    );
   }
 
   CameraController get cameraController {

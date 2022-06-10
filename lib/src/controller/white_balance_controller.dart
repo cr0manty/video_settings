@@ -23,6 +23,9 @@ class WhiteBalanceController extends BaseVideoSettingsController {
   Stream<TemperatureAndTintWhiteBalanceGains>? _whiteBalanceTempGainsStream;
   Stream<WhiteBalanceGains>? _whiteBalanceGainsStream;
 
+  @override
+  String get methodType => 'WhiteBalanceController';
+
   Stream<WhiteBalanceMode> get whiteBalanceModeStream {
     _whiteBalanceModeStream ??=
         _whiteBalanceModeChannel.receiveBroadcastStream().transform(

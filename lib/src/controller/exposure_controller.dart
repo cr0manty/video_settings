@@ -32,6 +32,9 @@ class ExposureController extends BaseVideoSettingsController {
   Stream<double>? _exposureTargetBiasStream;
   Stream<double>? _exposureTargetOffsetStream;
 
+  @override
+  String get methodType => 'ExposureController';
+
   Stream<ExposureMode> get exposureModeStream {
     _exposureModeStream ??=
         _exposureModeChannel.receiveBroadcastStream().transform(
