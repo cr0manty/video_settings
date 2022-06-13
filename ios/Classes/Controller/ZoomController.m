@@ -50,7 +50,6 @@
         AVCaptureDevice *newDevice = [VideoSettingsPlugin deviceByUniqueID: deviceId];
         if (newDevice) {
             self.device = newDevice;
-
         }
     }
 }

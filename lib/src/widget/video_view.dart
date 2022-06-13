@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_use_of_visible_for_testing_member
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -45,6 +47,7 @@ class _VideoViewState extends State<VideoView> {
                       if (widget._renderer.textureId == null) {
                         return const SizedBox.shrink();
                       }
+
                       return Transform(
                         transform: Matrix4.identity()
                           ..rotateY(widget.mirror ? -pi : 0.0),

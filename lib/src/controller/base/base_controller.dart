@@ -1,4 +1,3 @@
-import 'package:video_settings/src/controller/camera_controller.dart';
 import 'package:video_settings/src/error/camera_control_errors.dart';
 import 'package:video_settings/src/video_settings_method_channel.dart';
 
@@ -34,11 +33,13 @@ abstract class BaseVideoSettingsController {
     return _isInitialized;
   }
 
-  Future<void> dispose() async {
+  Future<bool> dispose() async {
     _isInitialized = false;
 
-    await _methodChannel.invokeMethod<bool>(
+    final result = await _methodChannel.invokeMethod<bool>(
       '$methodType/dispose',
     );
+
+    return result ?? false;
   }
 }
