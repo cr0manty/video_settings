@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:video_settings/src/error/camera_control_errors.dart';
 import 'package:video_settings/src/video_settings_method_channel.dart';
 
@@ -6,6 +9,8 @@ abstract class BaseVideoSettingsController {
   bool _isInitialized = false;
 
   String get methodType;
+
+  bool get isPlatformSuported => !kIsWeb && Platform.isIOS;
 
   Future<T?> invokeMethod<T>(
     String method, [
@@ -35,6 +40,10 @@ abstract class BaseVideoSettingsController {
 
   Future<bool> dispose() async {
     _isInitialized = false;
+
+    if (!isPlatformSuported) {
+      return false;
+    }
 
     final result = await _methodChannel.invokeMethod<bool>(
       '$methodType/dispose',

@@ -188,6 +188,10 @@
                                                                    y:point.y];
         [self.device setFocusPointOfInterest:truePoint];
         [self.device setExposurePointOfInterest:truePoint];
+        
+        // apply point of interest
+        [self.device setFocusMode:AVCaptureFocusModeAutoFocus];
+        [self.device setExposureMode:self.device.exposureMode];
         [self.device unlockForConfiguration];
         
         [self applyExposureMode];
