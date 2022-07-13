@@ -9,7 +9,7 @@ import 'package:video_settings/src/error/focus_error.dart';
 
 export '../error/focus_error.dart';
 
-class FocusController extends BaseVideoSettingsController{
+class FocusController extends BaseVideoSettingsController {
   final _focusModeChannel = const EventChannel(
     'FocusController/modeChannel',
   );
@@ -94,11 +94,37 @@ class FocusController extends BaseVideoSettingsController{
     return mode;
   }
 
+  Future<bool> refocus({
+    required TapDownDetails details,
+    required Size screenSize,
+    required Size previewSize,
+  }) async {
+    final isSupported = await isFocusPointOfInterestSupported();
+
+    if (!isSupported) {
+      return setFocusMode(
+        FocusMode.autoFocus,
+      );
+    }
+
+    return setFocusPoint(
+      details: details,
+      screenSize: screenSize,
+      previewSize: previewSize,
+    );
+  }
+
   Future<bool> setFocusPoint({
     required TapDownDetails details,
     required Size screenSize,
     required Size previewSize,
   }) async {
+    final isSupported = await isFocusPointOfInterestSupported();
+
+    if (!isSupported) {
+      return false;
+    }
+
     final x = details.localPosition.dx;
     final y = details.localPosition.dy;
 
@@ -158,6 +184,4 @@ class FocusController extends BaseVideoSettingsController{
 
     return supportedMode;
   }
-
-
 }
