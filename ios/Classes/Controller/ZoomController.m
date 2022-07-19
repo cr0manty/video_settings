@@ -46,50 +46,49 @@
 }
 
 -(void)init:(NSString*)deviceId {
-    if (@available(iOS 10.0, *)) {
-        AVCaptureDevice *newDevice = [VideoSettingsPlugin deviceByUniqueID: deviceId];
-        if (newDevice) {
-            self.device = newDevice;
-        }
+    AVCaptureDevice *newDevice = [VideoSettingsPlugin deviceByUniqueID: deviceId];
+    if (newDevice) {
+        self.device = newDevice;
     }
 }
 
 -(void)setZoom:(float)zoom
         result:(FlutterResult) result {
     NSError *error;
-    
+
+    float maxZoom = [self getMaxZoomFactor];
+
+    if (maxZoom < zoom) {
+        result([FlutterError errorWithCode:@"Set Zoom exception"
+                                   message:[NSString stringWithFormat:@"Your zoom is higher than max zoom factor, %f>%f", zoom, maxZoom]
+                            details:nil]);
+    }
+
     if([self.device lockForConfiguration:&error]) {
         [self.device setVideoZoomFactor:zoom];
         [self.device unlockForConfiguration];
         result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set Zoom excetion"
+        result([FlutterError errorWithCode:@"Set Zoom exception"
                             message:[NSString stringWithFormat:@"%@", error]
                             details:nil]);
     }
-    
+
     return result(@NO);
 }
 
 -(float)getMaxZoomFactor {
-    if (@available(iOS 11.0, *)) {
-        return [self.device maxAvailableVideoZoomFactor];
-    }
-    return 2;
+    return self.device.maxAvailableVideoZoomFactor;
 }
 
 -(float)getMinZoomFactor {
-    if (@available(iOS 11.0, *)) {
-        return [self.device minAvailableVideoZoomFactor];
-    }
-    
-    return 1;
+        return self.device.minAvailableVideoZoomFactor;
 }
 
 -(float)getZoomFactor {
-    return [self.device videoZoomFactor];
+    return self.device.videoZoomFactor;
 }
 
 @end

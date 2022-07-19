@@ -51,9 +51,7 @@
 }
 
 -(void)init:(NSString*)deviceId {
-    if (@available(iOS 10.0, *)) {
-        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
-    }
+    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
 }
 
 -(BOOL)isTorchSupported {
@@ -63,31 +61,31 @@
 -(void)switchTorch:(NSNumber*)modeNum
             result:(FlutterResult)result {
     AVCaptureTorchMode mode = (AVCaptureTorchMode)modeNum;
-    
+
     if (![self isTorchModeSupported:modeNum]) {
         result([FlutterError errorWithCode:@"Switch torch mode exception"
-                            message:@"Torch mode not supported"
-                            details:nil]);
+                                   message:@"Torch mode not supported"
+                                   details:nil]);
     }
-    
+
     NSError *error;
     if([self.device lockForConfiguration:&error]) {
         [self.device setTorchMode:mode];
         [self.device unlockForConfiguration];
         result(@YES);
     }
-    
+
     if (error) {
         result([FlutterError errorWithCode:@"Switch torch mode exception"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+                                   message:[NSString stringWithFormat:@"%@", error]
+                                   details:nil]);
     }
-    
+
     result(@NO);
 }
 
 -(BOOL)isTorchEnabled {
-    return [self.device isTorchActive];
+    return self.device.isTorchActive;
 }
 
 -(BOOL)isTorchModeSupported:(NSNumber*)modeNum {

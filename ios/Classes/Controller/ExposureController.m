@@ -94,9 +94,9 @@ __const float exposureMinimumDuration = 1.0/1000;
         result(value);
     } else if ([@"ExposureController/changeBias" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
-        NSNumber *vlue = argsMap[@"value"];
+        NSNumber *value = argsMap[@"value"];
         
-        [self changeBias:[vlue floatValue] result:result];
+        [self changeBias:[value floatValue] result:result];
     } else if ([@"ExposureController/changeExposureDuration" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSNumber *value = argsMap[@"value"];
@@ -116,28 +116,28 @@ __const float exposureMinimumDuration = 1.0/1000;
         self.ISOHandler && self.exposureTargetBiasHandler &&
         self.exposureTargetOffsetHandler) return;
     
-    self.exposureModeHandler = [[FlutterSinkHandler alloc]init];
-    self.exposureDurationHandler = [[FlutterSinkHandler alloc]init];
-    self.ISOHandler = [[FlutterSinkHandler alloc]init];
-    self.exposureTargetBiasHandler = [[FlutterSinkHandler alloc]init];
-    self.exposureTargetOffsetHandler = [[FlutterSinkHandler alloc]init];
-    
+    self.exposureModeHandler = [[FlutterSinkHandler alloc] init];
+    self.exposureDurationHandler = [[FlutterSinkHandler alloc] init];
+    self.ISOHandler = [[FlutterSinkHandler alloc] init];
+    self.exposureTargetBiasHandler = [[FlutterSinkHandler alloc] init];
+    self.exposureTargetOffsetHandler = [[FlutterSinkHandler alloc] init];
+
     FlutterEventChannel* exposureModeChannel = [FlutterEventChannel
-                                                     eventChannelWithName:@"ExposureController/modeChannel"
-                                                     binaryMessenger: [registrar messenger]];
+                                                eventChannelWithName:@"ExposureController/modeChannel"
+                                                binaryMessenger: [registrar messenger]];
     FlutterEventChannel* exposureDurationChannel = [FlutterEventChannel
-                                                     eventChannelWithName:@"ExposureController/durationChannel"
-                                                     binaryMessenger: [registrar messenger]];
+                                                    eventChannelWithName:@"ExposureController/durationChannel"
+                                                    binaryMessenger: [registrar messenger]];
     FlutterEventChannel* ISOChannel = [FlutterEventChannel
-                                        eventChannelWithName:@"ExposureController/isoChannel"
-                                        binaryMessenger: [registrar messenger]];
+                                       eventChannelWithName:@"ExposureController/isoChannel"
+                                       binaryMessenger: [registrar messenger]];
     FlutterEventChannel* exposureTargetBiasChannel = [FlutterEventChannel
-                                                     eventChannelWithName:@"ExposureController/targetBiasChannel"
-                                                     binaryMessenger: [registrar messenger]];
+                                                      eventChannelWithName:@"ExposureController/targetBiasChannel"
+                                                      binaryMessenger: [registrar messenger]];
     FlutterEventChannel* exposureTargetOffsetChannel = [FlutterEventChannel
-                                                     eventChannelWithName:@"ExposureController/offsetChannel"
-                                                     binaryMessenger: [registrar messenger]];
-    
+                                                        eventChannelWithName:@"ExposureController/offsetChannel"
+                                                        binaryMessenger: [registrar messenger]];
+
     [exposureModeChannel setStreamHandler: self.exposureModeHandler];
     [exposureDurationChannel setStreamHandler: self.exposureDurationHandler];
     [ISOChannel setStreamHandler:self.ISOHandler];
@@ -147,9 +147,7 @@ __const float exposureMinimumDuration = 1.0/1000;
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    if (@available(iOS 10.0, *)) {
-        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
-    }
+    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
     [self addObservers];
 }
 
@@ -163,7 +161,7 @@ __const float exposureMinimumDuration = 1.0/1000;
 
 -(void)removeObservers {
     if (!self.device) return;
-    
+
     [self.device removeObserver:self forKeyPath:@"exposureMode" context:nil];
     [self.device removeObserver:self forKeyPath:@"exposureDuration" context:nil];
     [self.device removeObserver:self forKeyPath:@"ISO" context:nil];
@@ -173,76 +171,82 @@ __const float exposureMinimumDuration = 1.0/1000;
 
 -(NSArray*)getSupportedExposureMode {
     NSMutableArray *array = [[NSMutableArray alloc] init];
-    
+
     if ([self.device isExposureModeSupported:AVCaptureExposureModeLocked]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureExposureModeLocked]];
     }
-    
+
     if ([self.device isExposureModeSupported:AVCaptureExposureModeAutoExpose]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureExposureModeAutoExpose]];
     }
-    
+
     if ([self.device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureExposureModeContinuousAutoExposure]];
     }
-    
+
     if ([self.device isExposureModeSupported:AVCaptureExposureModeCustom]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureExposureModeCustom]];
     }
-    
+
     return array;
 }
 
 -(void)setExposureMode:(NSInteger)modeNum result:(FlutterResult)result {
     AVCaptureExposureMode mode = (AVCaptureExposureMode)modeNum;
-    
+
     if (![self isExposureModeSupported: modeNum]) {
-        result(@NO);
+        return result(@NO);
     }
-    
+
     NSError *error;
     if ([self.device lockForConfiguration:&error]) {
         [self.device setExposureMode:mode];
         [self.device unlockForConfiguration];
         result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set exposure mode excetion"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        result([FlutterError errorWithCode:@"Set exposure mode exception"
+                                   message:[NSString stringWithFormat:@"%@", error]
+                                   details:nil]);
     }
-    
+
     result(@NO);
 }
 
 -(BOOL)isExposureModeSupported:(NSInteger)modeNum {
     AVCaptureExposureMode mode = (AVCaptureExposureMode)modeNum;
-    
+
     return [self.device isExposureModeSupported:mode];
 }
 
 
 -(void)changeISO:(float)value result:(FlutterResult)result  {
     NSError *error;
-    
-    if (value < [self.device activeFormat].minISO || value > [self.device activeFormat].maxISO) {
-        result([FlutterError errorWithCode:@"ChangeISO excetion"
-                            message:@"value is not in minISO and maxISO range"
-                            details:nil]);
+
+    if (value < self.device.activeFormat.minISO || value > self.device.activeFormat.maxISO) {
+        return  result([FlutterError errorWithCode:@"Change ISO exception"
+                                           message:@"value is not in minISO and maxISO range"
+                                           details:nil]);
     }
-    
+
+    if (![self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
+        return result([FlutterError errorWithCode:@"Change ISO exception"
+                                          message:@"White Balance Locked mode is not supported"
+                                          details:nil]);
+    }
+
     if([self.device lockForConfiguration:&error]) {
         [self.device setExposureModeCustomWithDuration:self.device.exposureDuration ISO:value completionHandler:nil];
         [self.device setWhiteBalanceMode:AVCaptureWhiteBalanceModeLocked];
-        
+
         [self.device unlockForConfiguration];
         result(@YES);
     }
     if (error) {
-        result([FlutterError errorWithCode:@"Change ISO excetion"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        return result([FlutterError errorWithCode:@"Change ISO exception"
+                                          message:[NSString stringWithFormat:@"%@", error]
+                                          details:nil]);
 
     }
     result(@NO);
@@ -250,64 +254,70 @@ __const float exposureMinimumDuration = 1.0/1000;
 
 -(void)changeBias:(float)value result:(FlutterResult)result  {
     NSError *error;
-    
-    if (value < [self.device minExposureTargetBias] || value > [self.device maxExposureTargetBias]) {
-        result([FlutterError errorWithCode:@"Change bias exception"
-                            message:@"value is not in minExposureTargetBias and maxExposureTargetBias range"
-                            details:nil]);
+
+    if (value < self.device.minExposureTargetBias || value > self.device.maxExposureTargetBias) {
+        return result([FlutterError errorWithCode:@"Change bias exception"
+                                          message:@"value is not in minExposureTargetBias and maxExposureTargetBias range"
+                                          details:nil]);
     }
-    
+
+    if (![self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
+        return result([FlutterError errorWithCode:@"Change bias exception"
+                                          message:@"White Balance Locked mode is not supported"
+                                          details:nil]);
+    }
+
     if([self.device lockForConfiguration:&error]) {
         [self.device setExposureTargetBias:value completionHandler:nil];
         [self.device setWhiteBalanceMode:AVCaptureWhiteBalanceModeLocked];
-        
+
         [self.device unlockForConfiguration];
-        result(@YES);
+        return result(@YES);
     }
     if (error) {
-        result([FlutterError errorWithCode:@"Change bias exception"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        return result([FlutterError errorWithCode:@"Change bias exception"
+                                          message:[NSString stringWithFormat:@"%@", error]
+                                          details:nil]);
 
     }
     result(@NO);
 }
 
 -(float)getMinISO {
-    return [self.device activeFormat].minISO;
+    return self.device.activeFormat.minISO;
 }
 
 -(float)getMaxISO {
-    return [self.device activeFormat].maxISO;
+    return self.device.activeFormat.maxISO;
 }
 
 -(void)changeExposureDuration:(float)value result:(FlutterResult)result  {
-    
-    if (@available(iOS 10.0, *)) {
-        if (self.device.deviceType == AVCaptureDeviceTypeBuiltInTelephotoCamera) {
-            result(@NO);
-        }
+
+    if (self.device.deviceType == AVCaptureDeviceTypeBuiltInTelephotoCamera) {
+        result(@NO);
     }
-    
+
     NSError *error;
-    
+
     if([self.device lockForConfiguration:&error]) {
         float iso = [self normalizeISO: self.device.ISO];
         float p = pow(value, exposureDurationPower); // Apply power function to expand slider's low-end range
         float minDurationSeconds = MAX(CMTimeGetSeconds(self.device.activeFormat.minExposureDuration), exposureMinimumDuration);
         float maxDurationSeconds = CMTimeGetSeconds(self.device.activeFormat.maxExposureDuration);
         float newDurationSeconds = p * ( maxDurationSeconds - minDurationSeconds ) + minDurationSeconds;
-        
+
         [self.device setExposureModeCustomWithDuration:CMTimeMakeWithSeconds(newDurationSeconds, 1000*1000*1000) ISO:iso completionHandler:nil];
-        [self.device setWhiteBalanceMode:AVCaptureWhiteBalanceModeLocked];
-        
+        if ([self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
+            [self.device setWhiteBalanceMode:AVCaptureWhiteBalanceModeLocked];
+        }
+
         [self.device unlockForConfiguration];
         result(@YES);
     }
     if (error) {
-        result([FlutterError errorWithCode:@"Change exposure dureation exception"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        result([FlutterError errorWithCode:@"Change exposure duration exception"
+                                   message:[NSString stringWithFormat:@"%@", error]
+                                   details:nil]);
     }
     result(@NO);
 }
@@ -315,58 +325,56 @@ __const float exposureMinimumDuration = 1.0/1000;
 -(float)normalizeISO:(float)iso {
     float newISO = MAX(self.device.activeFormat.minISO, iso);
     newISO = MIN(iso, self.device.activeFormat.maxISO);
-    
+
     return newISO;
 }
 
 -(CMTime)minExposureDuration{
-    return [self.device activeFormat].minExposureDuration;
+    return self.device.activeFormat.minExposureDuration;
 }
 
 -(CMTime)maxExposureDuration {
-    return [self.device activeFormat].maxExposureDuration;
+    return self.device.activeFormat.maxExposureDuration;
 }
 
 -(AVCaptureExposureMode)getExposureMode {
-    return [self.device exposureMode];
+    return self.device.exposureMode;
 }
 
 -(float)getExposureTargetOffset {
-    return [self.device exposureTargetOffset];
+    return self.device.exposureTargetOffset;
 }
 
 -(float)getExposureTargetBias {
-    return [self.device exposureTargetBias];
+    return self.device.exposureTargetBias;
 }
 
 -(float)getMaxExposureTargetBias {
-    return [self.device maxExposureTargetBias];
+    return self.device.maxExposureTargetBias;
 }
 
 -(float)getMinExposureTargetBias{
-    return [self.device minExposureTargetBias];
+    return self.device.minExposureTargetBias;
 }
-
 
 -(float)getISO {
     return self.device.ISO;
 }
 
-
 -(CMTime)getExposureDuration {
-    return [self.device exposureDuration];
+    return self.device.exposureDuration;
 }
 
 -(NSDictionary*)getExposureDurationSeconds {
     CMTime duration = [self getExposureDuration];
-    
+
     return [self getExposureDurationSeconds:duration];
 }
 
 -(NSDictionary*)getExposureDurationSeconds:(CMTime) duration {
-    CMTime min = [self.device activeFormat].minExposureDuration;
-    CMTime max = [self.device activeFormat].maxExposureDuration;
-    
+    CMTime min = self.device.activeFormat.minExposureDuration;
+    CMTime max = self.device.activeFormat.maxExposureDuration;
+
     NSUInteger exposureDurationSeconds = CMTimeGetSeconds(duration);
     NSUInteger minExposureDurationSeconds = MAX(CMTimeGetSeconds(min), exposureMinimumDuration);
     NSUInteger maxExposureDurationSeconds = CMTimeGetSeconds(max);
@@ -382,7 +390,7 @@ __const float exposureMinimumDuration = 1.0/1000;
     id newValue = [change valueForKey:NSKeyValueChangeNewKey];
 
     if (oldValue == newValue) return;
-    
+
     if ([keyPath isEqual:@"exposureMode"]) {
         if (self.exposureModeHandler && self.exposureModeHandler.sink) {
             self.exposureModeHandler.sink(newValue);
@@ -408,7 +416,6 @@ __const float exposureMinimumDuration = 1.0/1000;
             self.exposureTargetOffsetHandler.sink(newValue);
         }
     } else {
-        NSLog(@"changedDevice");
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
 }

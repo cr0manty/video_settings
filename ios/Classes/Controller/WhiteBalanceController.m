@@ -94,25 +94,23 @@
         return;
     }
     
-    self.whiteBalanceModeHandler = [[FlutterSinkHandler alloc]init];
-    self.whiteBalanceGainsHandler = [[FlutterSinkHandler alloc]init];
-    
+    self.whiteBalanceModeHandler = [[FlutterSinkHandler alloc] init];
+    self.whiteBalanceGainsHandler = [[FlutterSinkHandler alloc] init];
+
     FlutterEventChannel* whiteBalanceModeChannel = [FlutterEventChannel
                                                     eventChannelWithName:@"WhiteBalanceController/modeChannel"
                                                     binaryMessenger: [registrar messenger]];
     FlutterEventChannel* whiteBalanceGainsChannel = [FlutterEventChannel
                                                      eventChannelWithName:@"WhiteBalanceController/gainsChannel"
                                                      binaryMessenger: [registrar messenger]];
-    
+
     [whiteBalanceModeChannel setStreamHandler:self.whiteBalanceModeHandler];
     [whiteBalanceGainsChannel setStreamHandler:self.whiteBalanceGainsHandler];
 }
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    if (@available(iOS 10.0, *)) {
-        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
-    }
+    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
     [self addObservers];
 }
 
@@ -124,87 +122,83 @@
 
 -(void)removeObservers {
     if (!self.device) return;
-    
+
     [self.device removeObserver:self forKeyPath:@"whiteBalanceMode" context:nil];
     [self.device removeObserver:self forKeyPath:@"deviceWhiteBalanceGains" context:nil];
 }
 
 -(AVCaptureWhiteBalanceMode)getWhiteBalanceMode {
-    return [self.device whiteBalanceMode];
+    return self.device.whiteBalanceMode;
 }
 
 -(BOOL)isWhiteBalanceLockSupported {
-    if (@available(iOS 10.0, *)) {
-        return [self.device isLockingWhiteBalanceWithCustomDeviceGainsSupported];
-    }
-    
-    return FALSE;
+    return self.device.isLockingWhiteBalanceWithCustomDeviceGainsSupported;
 }
 
 -(NSArray*)getSupportedWhiteBalanceMode {
     NSMutableArray *array = [[NSMutableArray alloc] init];
-    
+
     if ([self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureWhiteBalanceModeLocked]];
     }
-    
+
     if ([self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeAutoWhiteBalance]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureWhiteBalanceModeAutoWhiteBalance]];
     }
-    
+
     if ([self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance]];
     }
-    
+
     return array;
 }
 
 -(BOOL)isWhiteBalanceModeSupported:(NSInteger)modeNum {
     AVCaptureWhiteBalanceMode mode = (AVCaptureWhiteBalanceMode)modeNum;
-    
+
     return [self.device isWhiteBalanceModeSupported:mode];
 }
 
 -(void)setWhiteBalanceMode:(NSInteger)modeNum result:(FlutterResult)result {
     AVCaptureWhiteBalanceMode mode = (AVCaptureWhiteBalanceMode)modeNum;
-    
+
     if (![self.device isWhiteBalanceModeSupported:mode]) {
         result(@NO);
     }
-    
+
     NSError *error;
     if ([self.device lockForConfiguration:&error]) {
         [self.device setWhiteBalanceMode:mode];
         [self.device unlockForConfiguration];
         result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set white balance mode excetion"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        result([FlutterError errorWithCode:@"Set white balance mode exception"
+                                   message:[NSString stringWithFormat:@"%@", error]
+                                   details:nil]);
     }
-    
+
     result(@NO);
 }
 
 -(void)setWhiteBalanceGains:(AVCaptureWhiteBalanceGains)gains result:(FlutterResult)result {
-    
+
     if ([self.device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
         NSError *error = nil;
-        
+
         if([self.device lockForConfiguration:&error]) {
-            AVCaptureWhiteBalanceGains normilizedGains = [self normalizedGains: gains];
-            
-            [self.device setWhiteBalanceModeLockedWithDeviceWhiteBalanceGains:normilizedGains completionHandler:nil];
-            
+            AVCaptureWhiteBalanceGains normGains = [self normalizedGains: gains];
+
+            [self.device setWhiteBalanceModeLockedWithDeviceWhiteBalanceGains:normGains completionHandler:nil];
+
             [self.device unlockForConfiguration];
             result(@YES);
         }
         if (error) {
-            result([FlutterError errorWithCode:@"Set white balance gains excetion"
-                                message:[NSString stringWithFormat:@"%@", error]
-                                details:nil]);
+            result([FlutterError errorWithCode:@"Set white balance gains exception"
+                                       message:[NSString stringWithFormat:@"%@", error]
+                                       details:nil]);
         }
     }
     result(@NO);
@@ -216,9 +210,9 @@
     AVCaptureWhiteBalanceTemperatureAndTintValues gains;
     gains.temperature = temperature;
     gains.tint = tint;
-    
+
     AVCaptureWhiteBalanceGains normalGains = [self.device deviceWhiteBalanceGainsForTemperatureAndTintValues:gains];
-    
+
     [self setWhiteBalanceGains:normalGains result:result];
 }
 
@@ -230,28 +224,28 @@
 -(AVCaptureWhiteBalanceGains)getCurrentBalanceGains {
     AVCaptureWhiteBalanceGains gains = self.device.deviceWhiteBalanceGains;
     AVCaptureWhiteBalanceGains normalizedGains = [self normalizedGains:gains];
-    
+
     return normalizedGains;
 }
 
 -(AVCaptureWhiteBalanceTemperatureAndTintValues)getCurrentTemperatureBalanceGains {
     AVCaptureWhiteBalanceGains gains = self.device.deviceWhiteBalanceGains;
     AVCaptureWhiteBalanceGains normalizedGains = [self normalizedGains:gains];
-    
+
     return [self.device temperatureAndTintValuesForDeviceWhiteBalanceGains:normalizedGains];
 }
 
 -(AVCaptureWhiteBalanceGains)normalizedGains:(AVCaptureWhiteBalanceGains) gains {
     AVCaptureWhiteBalanceGains g = gains;
-    
+
     g.redGain = MAX(1.0, g.redGain);
     g.greenGain = MAX(1.0, g.greenGain);
     g.blueGain = MAX(1.0, g.blueGain);
-    
+
     g.redGain = MIN(self.device.maxWhiteBalanceGain, g.redGain);
     g.greenGain = MIN(self.device.maxWhiteBalanceGain, g.greenGain);
     g.blueGain = MIN(self.device.maxWhiteBalanceGain, g.blueGain);
-    
+
     return g;
 }
 
@@ -265,7 +259,7 @@
     id newValue = [change valueForKey:NSKeyValueChangeNewKey];
 
     if (oldValue == newValue) return;
-    
+
     if ([keyPath isEqual:@"whiteBalanceMode"]) {
         if (self.whiteBalanceModeHandler && self.whiteBalanceModeHandler.sink) {
             self.whiteBalanceModeHandler.sink(newValue);
@@ -279,7 +273,6 @@
             self.whiteBalanceGainsHandler.sink(@{@"redGain": [NSNumber numberWithFloat: gains.redGain], @"blueGain": [NSNumber numberWithFloat: gains.blueGain], @"greenGain": [NSNumber numberWithFloat: gains.greenGain]});
         }
     } else {
-        NSLog(@"changedDevice");
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
 }

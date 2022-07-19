@@ -77,25 +77,23 @@
 -(void)registerAdditionalHandlers:(NSObject<FlutterPluginRegistrar>*)registrar {
     if (self.focusModeHandler && self.focusLensPositionHandler) return;
     
-    self.focusModeHandler = [[FlutterSinkHandler alloc]init];
-    self.focusLensPositionHandler = [[FlutterSinkHandler alloc]init];
-    
+    self.focusModeHandler = [[FlutterSinkHandler alloc] init];
+    self.focusLensPositionHandler = [[FlutterSinkHandler alloc] init];
+
     FlutterEventChannel* focusModeDataChannel = [FlutterEventChannel
-                                        eventChannelWithName:@"FocusController/modeChannel"
-                                        binaryMessenger: [registrar messenger]];
+                                                 eventChannelWithName:@"FocusController/modeChannel"
+                                                 binaryMessenger: [registrar messenger]];
     FlutterEventChannel* focusLensPositionChannel = [FlutterEventChannel
                                                      eventChannelWithName:@"FocusController/lensDistanceChannel"
                                                      binaryMessenger: [registrar messenger]];
-    
+
     [focusModeDataChannel setStreamHandler:self.focusModeHandler];
     [focusLensPositionChannel setStreamHandler:self.focusLensPositionHandler];
 }
 
 -(void)init:(NSString*)deviceId {
     [self removeObservers];
-    if (@available(iOS 10.0, *)) {
-        self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
-    }
+    self.device = [VideoSettingsPlugin deviceByUniqueID: deviceId];
     [self addObservers];
 }
 
@@ -111,60 +109,56 @@
 
 -(BOOL)isFocusModeSupported:(NSInteger)modeNum {
     AVCaptureFocusMode mode = (AVCaptureFocusMode)modeNum;
-    
+
     return [self.device isFocusModeSupported:mode];
 }
 
 -(BOOL)isLockingFocusWithCustomLensPositionSupported {
-    if (@available(iOS 10.0, *)) {
-        return [self.device isLockingFocusWithCustomLensPositionSupported];
-    }
-    
-    return FALSE;
+    return self.device.isLockingFocusWithCustomLensPositionSupported;
 }
 
 -(NSArray*)getSupportedFocusMode {
     NSMutableArray *array = [[NSMutableArray alloc] init];
-    
+
     if ([self.device isFocusModeSupported:AVCaptureFocusModeLocked]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeLocked]];
     }
-    
+
     if ([self.device isFocusModeSupported:AVCaptureFocusModeAutoFocus]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeAutoFocus]];
     }
-    
+
     if ([self.device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
         [array addObject:[NSNumber numberWithInteger:AVCaptureFocusModeContinuousAutoFocus]];
     }
-    
+
     return array;
 }
 
 -(AVCaptureFocusMode)getFocusMode {
-    return [self.device focusMode];
+    return self.device.focusMode;
 }
 
 -(void)setFocusMode:(NSInteger)modeNum result:(FlutterResult)result {
     AVCaptureFocusMode mode = (AVCaptureFocusMode)modeNum;
-    
+
     if (![self.device isFocusModeSupported:mode]) {
-        result(@NO);
+        return result(@NO);
     }
-    
+
     NSError *error;
     if ([self.device lockForConfiguration:&error]) {
         [self.device setFocusMode:mode];
         [self.device unlockForConfiguration];
         result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set focus mode exception"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        return result([FlutterError errorWithCode:@"Set focus mode exception"
+                                          message:[NSString stringWithFormat:@"%@", error]
+                                          details:nil]);
     }
-    
+
     result(@NO);
 }
 
@@ -174,108 +168,119 @@
 
 -(void)setFocusPoint:(CGPoint)point result:(FlutterResult)result {
     if (!self.device.isFocusPointOfInterestSupported || !self.device.isExposurePointOfInterestSupported) {
-        result([FlutterError errorWithCode:@"Set focus point failed"
-                            message:@"Device does not have focus point capabilities"
-                            details:nil]);
+        return result([FlutterError errorWithCode:@"Set focus point failed"
+                                          message:@"Device does not have focus point capabilities"
+                                          details:nil]);
     }
-    
+
+    if (![self.device isFocusModeSupported:AVCaptureFocusModeAutoFocus] || ![self.device isExposureModeSupported:self.device.exposureMode]) {
+        return result([FlutterError errorWithCode:@"Set focus point failed"
+                                          message:@"Focus mode or exposure mode not supported"
+                                          details:nil]);
+    }
+
     NSError *error = nil;
-    
+
     UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
     if ([self.device lockForConfiguration:&error]) {
-        CGPoint truePoint = [self getCGPointForCoordsWithOrientation:orientation
+        CGPoint truePoint = [self getCGPointForCoordWithOrientation:orientation
                                                                    x:point.x
                                                                    y:point.y];
         [self.device setFocusPointOfInterest:truePoint];
         [self.device setExposurePointOfInterest:truePoint];
-        
+
         // apply point of interest
         [self.device setFocusMode:AVCaptureFocusModeAutoFocus];
         [self.device setExposureMode:self.device.exposureMode];
         [self.device unlockForConfiguration];
-        
+
         [self applyExposureMode];
         result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set focus point excetion"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        result([FlutterError errorWithCode:@"Set focus point exception"
+                                   message:[NSString stringWithFormat:@"%@", error]
+                                   details:nil]);
     }
-    
+
     result(@NO);
 }
 
 -(void)applyExposureMode {
-    [self.device lockForConfiguration:nil];
+    if ([self.device lockForConfiguration:nil]) {
+        AVCaptureExposureMode mode = self.device.exposureMode;
 
-    AVCaptureExposureMode mode = self.device.exposureMode;
-    
-    switch (mode) {
-        case AVCaptureExposureModeLocked:
-        case AVCaptureExposureModeCustom:
-          [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
-          break;
-        case AVCaptureExposureModeAutoExpose:
-        case AVCaptureExposureModeContinuousAutoExposure:
-          if ([self.device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
-            [self.device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
-          } else {
-            [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
-          }
-          break;
+        switch (mode) {
+            case AVCaptureExposureModeLocked:
+            case AVCaptureExposureModeCustom:
+                [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
+                break;
+            case AVCaptureExposureModeAutoExpose:
+            case AVCaptureExposureModeContinuousAutoExposure:
+                if ([self.device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+                    [self.device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+                } else {
+                    [self.device setExposureMode:AVCaptureExposureModeAutoExpose];
+                }
+                break;
+        }
+
+        [self.device unlockForConfiguration];
     }
-    
-    [self.device unlockForConfiguration];
 }
 
--(CGPoint)getCGPointForCoordsWithOrientation:(UIDeviceOrientation)orientation
-                                            x:(double)x
-                                            y:(double)y {
+-(CGPoint)getCGPointForCoordWithOrientation:(UIDeviceOrientation)orientation
+                                           x:(double)x
+                                           y:(double)y {
     double oldX = x;
     double oldY = y;
-    
+
     switch (orientation) {
-    case UIDeviceOrientationPortrait:  // 90 ccw
-      y = 1 - oldX;
-      x = oldY;
-      break;
-    case UIDeviceOrientationPortraitUpsideDown:  // 90 cw
-      x = 1 - oldY;
-      y = oldX;
-      break;
-    case UIDeviceOrientationLandscapeRight:  // 180
-      x = 1 - x;
-      y = 1 - y;
-      break;
-    case UIDeviceOrientationLandscapeLeft:
-    default:
-      // No rotation required
-      break;
+        case UIDeviceOrientationPortrait:  // 90 ccw
+            y = 1 - oldX;
+            x = oldY;
+            break;
+        case UIDeviceOrientationPortraitUpsideDown:  // 90 cw
+            x = 1 - oldY;
+            y = oldX;
+            break;
+        case UIDeviceOrientationLandscapeRight:  // 180
+            x = 1 - x;
+            y = 1 - y;
+            break;
+        case UIDeviceOrientationLandscapeLeft:
+        default:
+            // No rotation required
+            break;
     }
     return CGPointMake(x, y);
 }
 
 -(float)getFocusPointLocked {
-    return [self.device lensPosition];
+    return self.device.lensPosition;
 }
 
 -(void)setFocusPointLocked:(float)lensPosition result:(FlutterResult)result {
+    if (![self.device isFocusModeSupported:AVCaptureFocusModeLocked] || !self.device.isLockingFocusWithCustomLensPositionSupported) {
+        return result(@NO);
+    }
+
+
     NSError *error;
     if ([self.device lockForConfiguration:&error]) {
         [self.device setFocusModeLockedWithLensPosition:lensPosition completionHandler: nil];
         [self.device unlockForConfiguration];
-        result(@YES);
+        return result(@YES);
     }
-    
+
     if (error) {
-        result([FlutterError errorWithCode:@"Set focus point locked excetion"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
+        return result([FlutterError errorWithCode:@"Set focus point locked exception"
+                                          message:[NSString stringWithFormat:@"%@", error]
+                                          details:nil]);
     }
-    
-    result(@NO);
+
+    return result(@NO);
 }
 
 -(void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
@@ -283,7 +288,7 @@
     id newValue = [change valueForKey:NSKeyValueChangeNewKey];
 
     if (oldValue == newValue) return;
-    
+
     if ([keyPath isEqual:@"focusMode"]) {
         if (self.focusModeHandler && self.focusModeHandler.sink) {
             self.focusModeHandler.sink(newValue);
@@ -293,7 +298,6 @@
             self.focusLensPositionHandler.sink(newValue);
         }
     } else {
-        NSLog(@"changedDevice");
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
 }

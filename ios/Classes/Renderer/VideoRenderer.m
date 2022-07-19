@@ -9,6 +9,15 @@
 #import "VideoRenderer.h"
 #import "VideoSettingsPlugin.h"
 
+#define kOrientation AVCaptureVideoOrientationPortrait
+
+@interface VideoRenderer() <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate> {
+    AVCaptureConnection *audioConnection;
+    AVCaptureConnection *videoConnection;
+    
+    AVCaptureDeviceInput *videoInput;
+}
+@end
 
 
 @implementation VideoRenderer{
@@ -27,7 +36,19 @@
         NSString* deviceId = (NSString*)argsMap[@"deviceId"];
         _active = TRUE;
         
-        [self updateDeviceWIthDeviceID:deviceId result:result];
+        [self setupVideo:deviceId];
+        [self setupAudio];
+        dispatch_queue_t globalQueue =  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
+        dispatch_async(globalQueue, ^{
+            [self.capturesSession startRunning];
+        });
+        if (!self.textureId) {
+            self.textureId = [self.registry registerTexture:self];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.registry textureFrameAvailable:self.textureId];
+        });
+        result([NSNumber numberWithLong: self.textureId]);
     } else if ([@"VideoRenderer/updateDevice" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* deviceId = (NSString*)argsMap[@"deviceId"];
@@ -45,7 +66,7 @@
     
     if (self) {
         _dispatch_queue =
-              dispatch_queue_create("com.cr0manty.videoSetiings.pixelBufferSynchronizationQueue", NULL);
+              dispatch_queue_create("com.cr0manty.videoSettings.pixelBufferSynchronizationQueue", NULL);
         self.registry = registrar;
         self.capturesSession = [AVCaptureSession new];
         
@@ -57,41 +78,97 @@
     return self;
 }
 
+- (void)setupVideo:(NSString*)deviceID {
+#if TARGET_IPHONE_SIMULATOR
+    return;
+#endif
+    int fps = 60;
+    AVCaptureDevice *device = [VideoSettingsPlugin deviceByUniqueID:deviceID];
+    videoInput = [AVCaptureDeviceInput deviceInputWithDevice:device error:nil];
+    if ([self.capturesSession canAddInput:videoInput]) {
+        [self.capturesSession addInput:videoInput];
+    }
+    
+    AVCaptureVideoDataOutput *videoOut = [[AVCaptureVideoDataOutput alloc] init];
+    videoOut.alwaysDiscardsLateVideoFrames = YES;
+    [videoOut setSampleBufferDelegate:self queue:_dispatch_queue];
+    
+    // Set the video output to store frame in BGRA (It is supposed to be faster)
+//    videoOut.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+    videoOut.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)};
+
+    if ([self.capturesSession canAddOutput:videoOut]) {
+        [self.capturesSession addOutput:videoOut];
+    }
+    [self.capturesSession setSessionPreset:AVCaptureSessionPreset1280x720];
+    videoConnection = [videoOut connectionWithMediaType:AVMediaTypeVideo];
+    videoConnection.videoOrientation = kOrientation;
+    videoConnection.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeOff;
+    
+    // Setup camera capture mode
+    for(AVCaptureDeviceFormat *vFormat in [device formats] ) {
+        CMFormatDescriptionRef description= vFormat.formatDescription;
+        CMVideoDimensions dim = CMVideoFormatDescriptionGetDimensions(description);
+        float maxRate = ((AVFrameRateRange*) [vFormat.videoSupportedFrameRateRanges objectAtIndex:0]).maxFrameRate;
+        if (maxRate >= fps && dim.width == 1280 && CMFormatDescriptionGetMediaSubType(description)==kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+            if ([device lockForConfiguration:nil]) {
+                NSLog(@"Set camera capture mode %@", vFormat);
+                device.activeFormat = vFormat;
+                device.activeVideoMinFrameDuration = CMTimeMake(100,100 * fps);
+                device.activeVideoMaxFrameDuration = CMTimeMake(100,100 * fps);
+                [device unlockForConfiguration];
+                break;
+            }
+        }
+    }
+}
+
+- (void)setupAudio {
+    AVCaptureDevice *audioDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeAudio];
+    AVCaptureDeviceInput *audioIn = [[AVCaptureDeviceInput alloc] initWithDevice:audioDevice error:nil];
+    if ( [self.capturesSession canAddInput:audioIn] ) {
+        [self.capturesSession addInput:audioIn];
+    }
+    
+    AVCaptureAudioDataOutput *audioOut = [[AVCaptureAudioDataOutput alloc] init];
+    [audioOut setSampleBufferDelegate:self queue:_dispatch_queue];
+    
+    if ( [self.capturesSession canAddOutput:audioOut] ) {
+        [self.capturesSession addOutput:audioOut];
+    }
+    audioConnection = [audioOut connectionWithMediaType:AVMediaTypeAudio];
+}
+
+
 -(void)updateDeviceWIthDeviceID:(NSString*)deviceID result:(FlutterResult)result {
     AVCaptureDevice *device = [VideoSettingsPlugin deviceByUniqueID:deviceID];
     NSError *error;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device
                                                                         error:&error];
+    dispatch_queue_t globalQueue =  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
+    dispatch_async(globalQueue, ^{
+        [self.capturesSession beginConfiguration];
+    });
+    
     if (error) {
         result([FlutterError errorWithCode:@"Error update camera device"
                             message:[NSString stringWithFormat:@"%@", error]
                             details:nil]);
     }
     
-    if (@available(iOS 10.0, *)) {
-        _stillImageOutput = [AVCapturePhotoOutput new];
-    } else {
-        result([FlutterError errorWithCode:@"only available for ios 10 and higher"
-                            message:[NSString stringWithFormat:@"%@", error]
-                            details:nil]);
-    }
-    if ([self.capturesSession canAddInput:input] && [self.capturesSession canAddOutput:_stillImageOutput]) {
-        [self.capturesSession addInput:input];
-        [self.capturesSession addOutput:_stillImageOutput];
-        
-        dispatch_queue_t globalQueue =  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
-        dispatch_async(globalQueue, ^{
-            [self.capturesSession startRunning];
-        });
-        
-        if (!self.textureId) {
-            self.textureId = [self.registry registerTexture:self];
+    for (AVCaptureDeviceInput *inputElement in self.capturesSession.inputs) {
+        if (inputElement == videoInput) {
+            [self.capturesSession removeInput:inputElement];
         }
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.registry textureFrameAvailable:self.textureId];
-        });
-        result([NSNumber numberWithLong: self.textureId]);
     }
+    
+    if ([self.capturesSession canAddInput:input]) {
+        [self.capturesSession addInput:input];
+        
+    }
+    dispatch_async(globalQueue, ^{
+        [self.capturesSession commitConfiguration];
+    });
     
     result(nil);
 }
@@ -128,80 +205,7 @@
 }
 
 
-- (void)setPixelBufferNoCopy:(CVPixelBufferRef)pixelBuffer {
-  CVPixelBufferRef old = atomic_exchange(&_pixelBuffer, pixelBuffer);
-  [_registry textureFrameAvailable:_textureId];
-  if (old != nil) {
-    CFRelease(old);
-  }
-}
 
-- (void)storePixelBufferNoCopy:(CVPixelBufferRef)pixelBuffer {
-  dispatch_barrier_sync(_dispatch_queue, ^{
-    if (self->_pixelBufferSource) {
-      CFRelease(self->_pixelBufferSource);
-    }
-    CFRetain(pixelBuffer);
-    self->_pixelBufferSource = pixelBuffer;
-  });
-
-  CVPixelBufferRef old = atomic_exchange(&self->_pixelBuffer, _pixelBufferSource);
-  [_registry textureFrameAvailable:_textureId];
-  if (old != nil) {
-    CFRelease(old);
-  }
-}
-
-- (void)storePixelBuffer:(CVPixelBufferRef)pixelBuffer {
-//  CVPixelBufferRef newPixelBuffer = _copyPixelBuffer(pixelBuffer);
-  dispatch_barrier_sync(_dispatch_queue, ^{
-    if (self->_pixelBufferSource) {
-      CFRelease(self->_pixelBufferSource);
-    }
-    CFRetain(pixelBuffer);
-    self->_pixelBufferSource = pixelBuffer;
-  });
-
-  CVPixelBufferRef old = atomic_exchange(&_pixelBuffer, _pixelBufferSource);
-  [_registry textureFrameAvailable:_textureId];
-  if (old != nil) {
-    CFRelease(old);
-  }
-}
-
-- (void)renderStoredPixelBuffer {
-  if (!_active) return;
-
-  dispatch_sync(_dispatch_queue, ^{
-    if (self->_pixelBufferSource) {
-      CFRetain(self->_pixelBufferSource);
-      atomic_store(&self->_pixelBuffer, self->_pixelBufferSource);
-      [self->_registry textureFrameAvailable:self->_textureId];
-    }
-  });
-}
-
-- (CVPixelBufferRef)getStoredPixelBuffer {
-  __block CVPixelBufferRef pixelBuffer;
-  dispatch_sync(_dispatch_queue, ^{
-    pixelBuffer = self->_pixelBufferSource;
-  });
-  return pixelBuffer;
-}
-
-- (CGSize)getStoredImageSize {
-  __block CGSize size;
-  dispatch_sync(_dispatch_queue, ^{
-    if (self->_pixelBufferSource) {
-      size_t width = CVPixelBufferGetWidth(self->_pixelBufferSource);
-      size_t height = CVPixelBufferGetHeight(self->_pixelBufferSource);
-      size = CGSizeMake(width, height);
-    } else {
-      size = CGSizeZero;
-    }
-  });
-  return size;
-}
 
 #pragma mark FlutterTexture
 
@@ -211,5 +215,13 @@
   return pixelBuffer;
 }
 
+
+#pragma mark - AVCaptureSession delegate
+- (void)captureOutput:(AVCaptureOutput *)captureOutput
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    _pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    [self.registry textureFrameAvailable:self.textureId];
+}
 
 @end

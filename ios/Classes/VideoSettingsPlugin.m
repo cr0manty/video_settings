@@ -26,20 +26,20 @@
     self.zoomController = [ZoomController new];
     self.torchController = [TorchController new];
     self.permissionHandler = [PermissionHandler new];
-    if (@available(iOS 10.0, *)) {
-        self.renderer = [[VideoRenderer alloc] init:textures
-                                        messenger:messenger];
+
+    self.renderer = [[VideoRenderer alloc] init:textures
+                                    messenger:messenger];
 //        long long textureId = [[registrar textures] registerTexture:self.renderer];
 //        self.renderer.textureId = textureId;
-        
-       
-    }
-    
+
+
+
+
     // register controllers
     [self.exposureController registerAdditionalHandlers:registrar];
     [self.whiteBalanceController registerAdditionalHandlers:registrar];
     [self.focusController registerAdditionalHandlers:registrar];
-    
+
     return self;
 }
 
@@ -59,12 +59,7 @@
     } else if ([call.method containsString: @"PermissionHandler"]) {
         return [self.permissionHandler handleMethodCall:call result:result];
     }  else if ([call.method containsString: @"VideoRenderer"]) {
-        if (@available(iOS 10.0, *)) {
-            return [self.renderer handleMethodCall:call result:result];
-        } else {
-            result(FlutterMethodNotImplemented);
-        }
-        
+        return [self.renderer handleMethodCall:call result:result];
     } else {
         result(FlutterMethodNotImplemented);
     }

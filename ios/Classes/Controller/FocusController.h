@@ -50,7 +50,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 -(float)getFocusPointLocked;
 
--(CGPoint)getCGPointForCoordsWithOrientation:(UIDeviceOrientation)orientation
+-(CGPoint)getCGPointForCoordWithOrientation:(UIDeviceOrientation)orientation
                                             x:(double)x
                                             y:(double)y;
 
