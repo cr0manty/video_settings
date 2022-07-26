@@ -57,11 +57,11 @@
     NSError *error;
 
     float maxZoom = [self getMaxZoomFactor];
-
-    if (maxZoom < zoom) {
-        result([FlutterError errorWithCode:@"Set Zoom exception"
-                                   message:[NSString stringWithFormat:@"Your zoom is higher than max zoom factor, %f>%f", zoom, maxZoom]
-                            details:nil]);
+    float minZoom = [self getMinZoomFactor];
+    
+    if (maxZoom < zoom || zoom < minZoom) {
+        NSString *message = [NSString stringWithFormat:@"Your zoom is not in available zoom range, %f>%f>%f", minZoom, zoom, maxZoom];
+        result([FlutterError errorWithCode:@"Set Zoom exception" message:message details:nil]);
     }
 
     if([self.device lockForConfiguration:&error]) {

@@ -24,7 +24,9 @@ class VideoSettingsControllerFactory {
     }
 
     _device = device;
-    _streamController.add(device);
+    if (!_streamController.isClosed) {
+      _streamController.add(device);
+    }
   }
 
   CameraDevice? get device => _device;
